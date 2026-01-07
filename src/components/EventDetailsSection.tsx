@@ -7,7 +7,7 @@ const eventDetails = [
   { icon: Zap, label: 'Event Name', value: 'CyberFest 2026', color: 'primary' },
   { icon: Trophy, label: 'Event Type', value: '24-36 Hour National Cybersecurity Event', color: 'secondary' },
   { icon: Users, label: 'Organized By', value: 'Digital Defence Club (DDC), CBIT', color: 'accent' },
-  { icon: Calendar, label: 'Dates', value: '30th & 31st January 2026', color: 'primary' },
+  { icon: Calendar, label: 'Dates', value: '6th & 7th February 2026', color: 'primary' },
   { icon: MapPin, label: 'Venue', value: 'CBIT, Hyderabad', color: 'secondary' },
   { icon: Clock, label: 'Duration', value: '~30-36 Continuous Hours', color: 'accent' },
 ];
