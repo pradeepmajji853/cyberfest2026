@@ -85,7 +85,7 @@ const VenueSection = () => {
             className="cyber-card rounded-2xl overflow-hidden h-[400px] lg:h-full min-h-[400px]"
           >
             <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3806.7669014982897!2d78.3443443!3d17.4256679!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb93e91b4e8c55%3A0x6c08babc7eb8bec8!2sChaitanya%20Bharathi%20Institute%20of%20Technology!5e0!3m2!1sen!2sin!4v1699000000000!5m2!1sen!2sin"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3808.418602016775!2d78.3168619!3d17.3919735!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcb94eba8ad7c87%3A0xb78f51ed556f7cc5!2sChaitanya%20Bharathi%20Institute%20of%20Technology!5e0!3m2!1sen!2sin!4v1704860000000"
               width="100%"
               height="100%"
               style={{ border: 0, filter: 'invert(90%) hue-rotate(180deg)' }}
@@ -94,6 +94,8 @@ const VenueSection = () => {
               referrerPolicy="no-referrer-when-downgrade"
               title="CBIT Location"
             />
+
+
           </motion.div>
         </div>
       </div>
