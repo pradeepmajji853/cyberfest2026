@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import cbitBg from '../assets/cbit_bg.jpg.png';
+
 
 const CyberBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -55,11 +57,33 @@ const CyberBackground = () => {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.3 }}
-    />
+    <>
+      {/* Canva Background Image - To implement: 
+           1. Go to your Canva design: https://www.canva.com/design/DAG9RcjZdUY/ydNvnMBMv-bhxQ0NcExbIg/view
+           2. Click "Share" -> "Download" -> Choose PNG or JPG format
+           3. Save the image to your project's public/images folder as "cbit-bg.jpg"
+           4. The image will automatically appear as your background with a fallback gradient */}
+      {/* Background container with fallback gradient */}
+      <div 
+        className="fixed inset-0 z-0"
+        style={{
+            backgroundImage: `url(${cbitBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center center',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.7,
+            zIndex: 0
+        }}
+
+      />
+      
+      {/* Matrix Rain Canvas - Reduced opacity to not overpower the background */}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{ opacity: 0.15, zIndex: 1 }} // Lower opacity to let background shine through
+      />
+    </>
   );
 };
 

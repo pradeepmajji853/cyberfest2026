@@ -8,7 +8,6 @@ const eventDetails = [
   { icon: Trophy, label: 'Event Type', value: '24-36 Hour National Cybersecurity Event', color: 'secondary' },
   { icon: Users, label: 'Organized By', value: 'Digital Defence Club (DDC), CBIT', color: 'accent' },
   { icon: Calendar, label: 'Dates', value: '6th & 7th February 2026', color: 'primary' },
-  { icon: MapPin, label: 'Venue', value: 'CBIT, Hyderabad', color: 'secondary' },
   { icon: Clock, label: 'Duration', value: '~30-36 Continuous Hours', color: 'accent' },
 ];
 
@@ -54,7 +53,18 @@ const EventDetailsSection = () => {
                     {detail.label}
                   </span>
                   <p className="font-rajdhani text-lg font-semibold text-foreground mt-1">
-                    {detail.value}
+                    {detail.link ? (
+                      <a 
+                        href={detail.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="hover:text-primary transition-colors duration-200 underline decoration-dashed underline-offset-4"
+                      >
+                        {detail.value}
+                      </a>
+                    ) : (
+                      detail.value
+                    )}
                   </p>
                 </div>
               </div>

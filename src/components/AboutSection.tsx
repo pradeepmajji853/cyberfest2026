@@ -58,15 +58,9 @@ const AboutSection = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="cyber-card rounded-lg p-4 text-center">
-                <span className="font-mono-tech text-sm text-primary">Organized By</span>
-                <p className="font-orbitron font-bold mt-1">DDC, CBIT</p>
-              </div>
-              <div className="cyber-card rounded-lg p-4 text-center">
-                <span className="font-mono-tech text-sm text-secondary">Location</span>
-                <p className="font-orbitron font-bold mt-1">Hyderabad</p>
-              </div>
+            <div className="cyber-card rounded-lg p-4 text-center max-w-md mx-auto">
+              <span className="font-mono-tech text-sm text-primary">Organized By</span>
+              <p className="font-orbitron font-bold mt-1">Digital Defence Club (DDC), CBIT</p>
             </div>
           </motion.div>
 
