@@ -20,15 +20,12 @@ const HeroSection = () => {
       {/* Animated Background Elements */}
       <div className="absolute inset-0 cyber-grid hex-pattern" />
       
-      {/* Radial Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/50 to-background" />
-      
       {/* Glowing Orbs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
       <div className="container mx-auto px-4 relative z-10">
-        <div className="flex flex-col items-center text-center">
+        <div className="flex flex-col items-center text-center bg-black/30 backdrop-blur-sm border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl">
           {/* Main Logo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}

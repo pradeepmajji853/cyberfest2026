@@ -37,11 +37,8 @@ const IntroVideo = ({ videoSrc, onVideoEnd }: IntroVideoProps) => {
           }
         }
       }
-
-      // Fade out the video after it ends
-      setTimeout(() => {
-        setShowVideo(false);
-      }, 500); // Match the transition duration
+      
+      // Removed internal fade out logic to let parent handle it
     };
 
     const video = videoRef.current;
@@ -72,7 +69,7 @@ const IntroVideo = ({ videoSrc, onVideoEnd }: IntroVideoProps) => {
   return (
     <>
       <div
-        className={`fixed inset-0 z-[100] transition-opacity duration-500 overflow-hidden ${showVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-[100] overflow-hidden`}
       >
         {/* Mobile-optimized video container */}
         <div className="w-full h-full flex items-center justify-center bg-black">
