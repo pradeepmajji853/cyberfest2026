@@ -10,7 +10,7 @@ import ScheduleSection from '@/components/ScheduleSection';
 import VenueSection from '@/components/VenueSection';
 import SponsorsSection from '@/components/SponsorsSection';
 import Footer from '@/components/Footer';
-import CyberBackground from '@/components/CyberBackground';
+// import CyberBackground from '@/components/CyberBackground';
 import IntroVideo from '@/components/video/IntroVideo';
 
 const Index = () => {
@@ -36,8 +36,8 @@ const Index = () => {
         </div>
       )}
 
-      {/* CyberBackground - Always render it so it's visible behind transparency */}
-      <CyberBackground />
+      {/* Placeholder Background - Plain black canvas for future modifications */}
+      <div className="fixed inset-0 bg-black -z-10" />
 
       {/* Navigation */}
       <Navbar showAfterIntro={introVideoEnded} />
