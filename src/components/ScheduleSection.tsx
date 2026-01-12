@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Clock, Coffee, Trophy, Users, Terminal, Award, Utensils, Flag } from 'lucide-react';
-import HackingSimulator from '@/components/HackingSimulator';
 
 interface ScheduleEvent {
   time: string;
@@ -58,9 +57,9 @@ const ScheduleSection = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <HackingSimulator text="Event Schedule" className="font-orbitron text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 px-4">
+          <div className="font-orbitron text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 px-4">
             <span className="gradient-text">Event Schedule</span>
-          </HackingSimulator>
+          </div>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent mx-auto mb-6" />
           <p className="font-rajdhani text-lg text-foreground/70">
             6th & 7th February 2026

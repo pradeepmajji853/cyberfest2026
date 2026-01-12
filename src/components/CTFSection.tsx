@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 import { Globe, Lock, Network, Binary, Search, Eye, Skull } from 'lucide-react';
-import HackingSimulator from '@/components/HackingSimulator';
 
 const ctfThemes = [
   { icon: Globe, title: 'Web Security', color: 'primary' },
@@ -39,9 +38,9 @@ const CTFSection = () => {
           <div className="inline-block mb-4 px-4 py-2 rounded-full border border-secondary/30 bg-secondary/10">
             <span className="font-mono-tech text-sm text-secondary uppercase tracking-wider">Track 2</span>
           </div>
-          <HackingSimulator text="Capture The Flag" className="font-orbitron text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 px-4">
+          <div className="font-orbitron text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 px-4">
             <span className="gradient-text-green">Capture The Flag</span>
-          </HackingSimulator>
+          </div>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-secondary to-transparent mx-auto mb-6" />
         </motion.div>
 
@@ -63,9 +62,7 @@ const CTFSection = () => {
             
             {/* Terminal Content */}
             <div className="p-4 md:p-6 font-mono-tech text-xs md:text-sm">
-              <HackingSimulator text="$ cat /challenges/themes.txt" className="text-secondary mb-2">
-                <p className="text-secondary mb-2">$ cat /challenges/themes.txt</p>
-              </HackingSimulator>
+              <p className="text-secondary mb-2">$ cat /challenges/themes.txt</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 {ctfThemes.map((theme, index) => (
                   <motion.div
@@ -76,17 +73,13 @@ const CTFSection = () => {
                     className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
                   >
                     <theme.icon className={`w-5 h-5 text-${theme.color} icon-hover transition-transform`} />
-                    <HackingSimulator text={theme.title} className="text-foreground/90 group-hover:text-foreground transition-colors">
-                      <span className="text-foreground/90 group-hover:text-foreground transition-colors">
-                        {theme.title}
-                      </span>
-                    </HackingSimulator>
+                    <span className="text-foreground/90 group-hover:text-foreground transition-colors">
+                      {theme.title}
+                    </span>
                   </motion.div>
                 ))}
               </div>
-              <HackingSimulator text="$ ./start_ctf --mode=competitive" className="text-secondary mt-6 terminal-cursor">
-                <p className="text-secondary mt-6 terminal-cursor">$ ./start_ctf --mode=competitive</p>
-              </HackingSimulator>
+              <p className="text-secondary mt-6 terminal-cursor">$ ./start_ctf --mode=competitive</p>
             </div>
           </div>
         </motion.div>

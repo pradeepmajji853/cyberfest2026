@@ -53,8 +53,8 @@ const HeroSection = () => {
             <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-white/10">
               <img src={iicLogo} alt="IIC Logo" className="h-7 sm:h-9 md:h-12 object-contain" />
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
-              <img src={ddcLogo} alt="DDC Logo" className="h-7 sm:h-9 md:h-12 object-contain" />
+            <div className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden">
+              <img src={ddcLogo} alt="DDC Logo" className="w-full h-full rounded-full object-cover" />
             </div>
           </motion.div>
 
@@ -127,7 +127,7 @@ const HeroSection = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1.5 }}
-            className="hidden md:block absolute bottom-6 left-1/2 -translate-x-1/2"
+            className="hidden md:block absolute bottom-2 left-1/2 -translate-x-1/2"
           >
             <motion.div
               animate={{ y: [0, 10, 0] }}
