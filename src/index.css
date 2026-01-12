@@ -89,6 +89,29 @@
 
   html {
     scroll-behavior: smooth;
+    /* Scrollbar styling (Firefox) */
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--cyber-cyan)) hsl(var(--background));
+  }
+
+  /* Scrollbar styling (Chrome/Edge/Safari) */
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--cyber-cyan) / 0.5);
+    border: 2px solid hsl(var(--background));
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--cyber-cyan) / 0.8);
   }
 
   body {

@@ -25,20 +25,18 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
 
   useEffect(() => {
     const handleScroll = () => {
-      // Calculate the height of the hero section (which is typically the viewport height)
-      const heroSection = document.querySelector('#home');
-      const heroHeight = heroSection ? heroSection.clientHeight : window.innerHeight;
-      const scrollThreshold = heroHeight * 0.6; // 60% of hero section height
-
-      setIsScrolled(window.scrollY > scrollThreshold);
+      // Keep navbar visible in the hero; only change styling after a small scroll.
+      setIsScrolled(window.scrollY > 8);
     };
 
+    handleScroll();
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Only show navbar if intro video has ended AND user has scrolled past 60% of hero
-  const shouldShowNavbar = showAfterIntro && isScrolled;
+  // Show navbar once intro is done; background fills as you scroll.
+  const shouldShowNavbar = showAfterIntro;
+  const isFilled = isScrolled || isMobileMenuOpen;
 
   return (
     <motion.nav
@@ -46,9 +44,9 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
       animate={{ y: shouldShowNavbar ? 0 : -100, opacity: shouldShowNavbar ? 1 : 0 }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? 'bg-gradient-to-r from-[#0a1628]/95 via-[#0d1f3c]/95 to-[#0a1628]/95 backdrop-blur-lg border-b border-primary/20 shadow-[0_4px_30px_rgba(0,240,255,0.1)]'
-          : 'bg-gradient-to-r from-[#0a1628]/80 via-[#0d1f3c]/80 to-[#0a1628]/80 backdrop-blur-sm'
+        isFilled
+          ? 'bg-background/80 backdrop-blur-lg border-b border-border/50'
+          : 'bg-transparent'
       }`}
     >
       <div className="container mx-auto px-4">
@@ -96,7 +94,7 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-gradient-to-b from-[#0a1628]/98 to-[#0d1f3c]/98 backdrop-blur-lg border-b border-primary/20"
+            className="lg:hidden bg-background/95 backdrop-blur-lg border-b border-border/50"
           >
             <div className="container mx-auto px-4 py-4 space-y-4">
               {navItems.map((item) => (
