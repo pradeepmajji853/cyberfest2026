@@ -5,11 +5,11 @@ import Marquee from './Marquee';
 
 
 const sponsors = [
-  { name: 'Infinitra Innovations', logo: '/images/infinitra.jpeg' },
-  { name: 'Student Tribe', logo: '/images/redlogo.webp' },
-  { name: 'Unstop', logo: '/images/unstop-logo.svg' },
-  { name: 'Devnovate', logo: '/images/DEVNOVATE.svg' },
-  { name: 'Cyber Mindspace', logo: '/images/redbull.jpeg' },
+  { name: 'Infinitra Innovations', logo: '/infinitra.jpeg' },
+  { name: 'Student Tribe', logo: '/redlogo.webp' },
+  { name: 'Unstop', logo: '/unstop-logo.svg' },
+  { name: 'Devnovate', logo: '/DEVNOVATE.svg' },
+  { name: 'Cyber Mindspace', logo: '/redbull.jpeg' },
 ];
 
 const SponsorsSection = () => {
