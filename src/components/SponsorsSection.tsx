@@ -5,7 +5,7 @@ import Marquee from './Marquee';
 
 
 const sponsors = [
-  { name: 'Infinitra Innovations', logo: '/images (3).jpeg' },
+  { name: 'Infinitra Innovations', logo: '/infinitra.jpeg' },
   { name: 'Student Tribe', logo: '/redlogo.webp' },
   { name: 'Unstop', logo: '/unstop-logo.svg' },
   { name: 'Devnovate', logo: '/DEVNOVATE.svg' },
