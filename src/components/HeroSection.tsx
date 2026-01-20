@@ -7,6 +7,10 @@ import iicLogo from '@/assets/iic-logo.png';
 import ddcLogo from '@/assets/ddc-logo.png';
 import DataFlowLine from '@/components/DataFlowLine';
 
+interface HeroSectionProps {
+  onRegisterClick?: () => void;
+}
+
 const scrollToSchedule = () => {
   const scheduleSection = document.getElementById('schedule');
   if (scheduleSection) {
@@ -14,7 +18,7 @@ const scrollToSchedule = () => {
   }
 };
 
-const HeroSection = () => {
+const HeroSection = ({ onRegisterClick }: HeroSectionProps) => {
   return (
     <section id="home" className="relative min-h-[100svh] flex items-center justify-center overflow-hidden py-10 sm:py-12 md:py-16">
       <div className="container mx-auto px-4 relative z-10">
@@ -107,7 +111,7 @@ const HeroSection = () => {
             transition={{ duration: 0.6, delay: 1.1 }}
             className="flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
-            <Button variant="cyber" size="xl" className="pulse-glow">
+            <Button variant="cyber" size="xl" className="pulse-glow" onClick={onRegisterClick}>
               Register Now
             </Button>
             <Button variant="cyberOutline" size="xl" onClick={scrollToSchedule}>

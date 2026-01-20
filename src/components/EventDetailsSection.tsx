@@ -9,8 +9,7 @@ const eventDetails = [
   { icon: Users, label: 'Organized By', value: 'Digital Defence Club (DDC), CBIT', color: 'accent' },
   { icon: Calendar, label: 'Dates', value: '6th & 7th February 2026', color: 'primary' },
   { icon: Clock, label: 'Duration', value: '~30-36 Continuous Hours', color: 'accent' },
-  { icon: Trophy, label: 'Prize Pool', value: '₹50,000', color: 'primary' },
-  { icon: Users, label: 'Registration Fee', value: '₹300', color: 'secondary' },
+  { icon: Trophy, label: 'Prize Pool', value: '₹75,000', color: 'primary' },
   { icon: Users, label: 'Participant Benefits', value: '$50 Worth Memberships for All', color: 'accent' },
 ];
 
@@ -45,7 +44,9 @@ const EventDetailsSection = () => {
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="cyber-card rounded-xl p-6 group hover:scale-105 transition-all duration-300"
+              className={`cyber-card rounded-xl p-6 group hover:scale-105 transition-all duration-300 ${
+                index === eventDetails.length - 1 ? 'lg:col-start-2' : ''
+              }`}
             >
               <div className="flex items-start gap-4">
                 <div className={`p-3 rounded-lg bg-${detail.color}/10 border border-${detail.color}/30`}>
