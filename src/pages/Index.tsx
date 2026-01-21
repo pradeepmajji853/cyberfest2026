@@ -36,11 +36,11 @@ const Index = () => {
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
           <Plasma
             color="#0047ab"
-            speed={2}
+            speed={isMobile ? 0.8 : 2}
             direction="forward"
-            scale={1.1}
-            opacity={0.8}
-            mouseInteractive={true}
+            scale={isMobile ? 0.95 : 1.1}
+            opacity={isMobile ? 0.5 : 0.8}
+            mouseInteractive={!isMobile}
           />
         </div>
       </div>
