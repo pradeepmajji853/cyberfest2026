@@ -197,33 +197,34 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-2 border-primary/30 rounded-lg shadow-[0_0_30px_rgba(0,71,171,0.3)]"
+          className="relative w-full max-w-4xl h-[100svh] sm:h-auto max-h-[100svh] sm:max-h-[90vh] overflow-y-auto bg-background border-0 sm:border-2 border-primary/30 rounded-none sm:rounded-lg shadow-[0_0_30px_rgba(0,71,171,0.3)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b border-primary/30 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl md:text-3xl font-orbitron font-bold text-primary">
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b border-primary/30 p-4 sm:p-6">
+            <div className="flex items-center justify-between pr-10">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-orbitron font-bold text-primary">
                 Registration - CyberFest 2026
               </h2>
-              <button
-                onClick={resetDialog}
-                className="p-2 hover:bg-primary/10 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6 text-foreground" />
-              </button>
             </div>
           </div>
+          <button
+            onClick={resetDialog}
+            className="fixed top-3 right-3 z-20 p-2 bg-background/90 border border-primary/30 hover:bg-primary/10 rounded-lg transition-colors sm:absolute sm:top-4 sm:right-4"
+            aria-label="Close registration"
+          >
+            <X className="w-6 h-6 text-foreground" />
+          </button>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {step === 'event-selection' && (
               <EventSelection
                 onSelect={(type) => {
@@ -294,7 +295,7 @@ const EventSelection = ({ onSelect }: { onSelect: (type: EventType) => void }) =
         <p className="text-foreground/60">Select which event you want to register for</p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid sm:grid-cols-2 gap-6">
         {/* Hackathon Card */}
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -375,7 +376,7 @@ const TeamSizeSelection = ({
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid sm:grid-cols-2 gap-6">
         {options.map((option) => (
           <motion.button
             key={option.size}
@@ -456,7 +457,7 @@ const DetailsForm = ({
             Member {index + 1}
           </h4>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             {/* Name */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -677,15 +678,15 @@ const DetailsForm = ({
         </div>
       ))}
 
-      <div className="flex justify-between gap-4 mt-8">
-        <Button variant="outline" onClick={onBack}>
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8">
+        <Button variant="outline" onClick={onBack} className="w-full sm:w-auto">
           Back
         </Button>
         <Button
           variant="cyber"
           onClick={onNext}
           disabled={!validateDetails()}
-          className="disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue to Payment
         </Button>
@@ -764,7 +765,7 @@ const PaymentStep = ({
           <img 
             src={qrPayment} 
             alt="Payment QR Code" 
-            className="w-64 h-64 object-contain"
+            className="w-52 h-52 sm:w-64 sm:h-64 object-contain"
           />
         </div>
         <p className="mt-4 text-foreground/60">Scan this QR code with any UPI app to pay</p>
@@ -809,15 +810,15 @@ const PaymentStep = ({
         />
       </div>
 
-      <div className="flex justify-between gap-4 mt-8">
-        <Button variant="outline" onClick={onBack} disabled={isSubmitting}>
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8">
+        <Button variant="outline" onClick={onBack} disabled={isSubmitting} className="w-full sm:w-auto">
           Back
         </Button>
         <Button
           variant="cyber"
           onClick={onSubmit}
           disabled={!paymentScreenshot || !transactionId || isSubmitting}
-          className="disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Submitting...' : 'Submit Registration'}
         </Button>

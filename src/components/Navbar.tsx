@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import cyberfestLogo from '@/assets/cyberfest-logo.png';
 import RegistrationDialog from './RegistrationDialog';
 
@@ -71,9 +70,6 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
-            <Button variant="cyber" size="sm" onClick={() => setIsRegistrationOpen(true)}>
-              Register Now
-            </Button>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -106,9 +102,6 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
                   {item.name}
                 </a>
               ))}
-              <Button variant="cyber" className="w-full" onClick={() => setIsRegistrationOpen(true)}>
-                Register Now
-              </Button>
             </div>
           </motion.div>
         )}
