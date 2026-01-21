@@ -61,7 +61,7 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
   const getPrice = () => {
     if (!eventType || !teamSize) return 0;
     if (eventType === 'hackathon') {
-      return teamSize === 3 ? 1200 : 1500;
+      return teamSize === 3 ? 900 : 1200;
     } else {
       return teamSize === 1 ? 300 : 600;
     }
@@ -96,10 +96,13 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
   };
 
   const validateDetails = () => {
+    const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
     return teamName.trim() !== '' && teamMembers.every(
       (member) =>
         member.name &&
         member.email &&
+        isValidEmail(member.email) &&
         member.phoneNumber &&
         member.rollNumber &&
         member.yearOfStudy &&
@@ -201,14 +204,14 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-2 border-primary/30 rounded-lg shadow-[0_0_30px_rgba(0,240,255,0.3)]"
+          className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-background border-2 border-primary/30 rounded-lg shadow-[0_0_30px_rgba(0,71,171,0.3)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b border-primary/30 p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl md:text-3xl font-orbitron font-bold text-primary">
-                Registration - CyberFest 2K26
+                Registration - CyberFest 2026
               </h2>
               <button
                 onClick={resetDialog}
@@ -304,10 +307,10 @@ const EventSelection = ({ onSelect }: { onSelect: (type: EventType) => void }) =
           <h4 className="text-2xl font-orbitron font-bold text-primary mb-3">Hackathon</h4>
           <div className="space-y-2 text-foreground/80">
             <p className="flex items-center justify-center gap-2">
-              <span className="text-primary font-bold">₹1200</span> - Team of 3
+              <span className="text-primary font-bold">₹900</span> - Team of 3
             </p>
             <p className="flex items-center justify-center gap-2">
-              <span className="text-primary font-bold">₹1500</span> - Team of 4
+              <span className="text-primary font-bold">₹1200</span> - Team of 4
             </p>
           </div>
           <ChevronRight className="w-6 h-6 text-primary mx-auto mt-4 group-hover:translate-x-2 transition-transform" />
@@ -353,8 +356,8 @@ const TeamSizeSelection = ({
   const options =
     eventType === 'hackathon'
       ? [
-          { size: 3, price: 1200 },
-          { size: 4, price: 1500 },
+          { size: 3, price: 900 },
+          { size: 4, price: 1200 },
         ]
       : [
           { size: 1, price: 300, label: 'Solo' },
@@ -519,13 +522,18 @@ const DetailsForm = ({
                 value={member.collegeType}
                 onChange={(e) => {
                   const newCollegeType = e.target.value;
-                  updateTeamMember(index, 'collegeType', newCollegeType);
-                  if (newCollegeType === 'CBIT') {
-                    updateTeamMember(index, 'college', 'CBIT');
-                    updateTeamMember(index, 'customCollege', '');
-                  } else {
-                    updateTeamMember(index, 'college', '');
-                  }
+                  setTeamMembers((prev) =>
+                    prev.map((member, i) =>
+                      i === index
+                        ? {
+                            ...member,
+                            collegeType: newCollegeType,
+                            college: newCollegeType === 'CBIT' ? 'CBIT' : '',
+                            customCollege: newCollegeType === 'CBIT' ? '' : member.customCollege,
+                          }
+                        : member,
+                    ),
+                  );
                 }}
                 className="w-full px-4 py-2 bg-background border border-primary/30 rounded-lg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
               >
@@ -562,13 +570,18 @@ const DetailsForm = ({
                 value={member.degreeType}
                 onChange={(e) => {
                   const newDegreeType = e.target.value;
-                  updateTeamMember(index, 'degreeType', newDegreeType);
-                  if (newDegreeType !== 'Other') {
-                    updateTeamMember(index, 'degree', newDegreeType);
-                    updateTeamMember(index, 'customDegree', '');
-                  } else {
-                    updateTeamMember(index, 'degree', '');
-                  }
+                  setTeamMembers((prev) =>
+                    prev.map((member, i) =>
+                      i === index
+                        ? {
+                            ...member,
+                            degreeType: newDegreeType,
+                            degree: newDegreeType !== 'Other' ? newDegreeType : '',
+                            customDegree: newDegreeType !== 'Other' ? '' : member.customDegree,
+                          }
+                        : member,
+                    ),
+                  );
                 }}
                 className="w-full px-4 py-2 bg-background border border-primary/30 rounded-lg focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
               >
@@ -828,7 +841,7 @@ const SuccessMessage = ({ onClose }: { onClose: () => void }) => {
         Registration Successful!
       </h3>
       <p className="text-foreground/60 mb-6 max-w-md mx-auto">
-        Thank you for registering for CyberFest 2K26. We'll review your payment and send a
+        Thank you for registering for CyberFest 2026. We'll review your payment and send a
         confirmation email shortly.
       </p>
       

@@ -11,7 +11,6 @@ const navItems = [
   { name: 'Events', href: '#events' },
   { name: 'Schedule', href: '#schedule' },
   { name: 'Venue', href: '#venue' },
-  { name: 'Sponsors', href: '#sponsors' },
 ];
 
 interface NavbarProps {
@@ -55,8 +54,8 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
           <a href="#home" className="flex items-center">
             <img
               src={cyberfestLogo}
-              alt="CyberFest 2K26"
-              className="h-10 md:h-12 object-contain drop-shadow-[0_0_10px_rgba(0,240,255,0.3)]"
+              alt="CyberFest 2026"
+              className="h-10 md:h-12 object-contain drop-shadow-[0_0_10px_rgba(0,71,171,0.3)]"
             />
           </a>
 

@@ -1,40 +1,6 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { Brain, Shield, Link, Search, Lock, Code } from 'lucide-react';
-
-const focusAreas = [
-  {
-    icon: Brain,
-    title: 'AI-based Threat Detection',
-    description: 'Build intelligent systems that identify and neutralize cyber threats using machine learning.',
-  },
-  {
-    icon: Search,
-    title: 'Malware & Intrusion Detection',
-    description: 'Develop advanced detection systems for malware analysis and intrusion prevention.',
-  },
-  {
-    icon: Link,
-    title: 'Blockchain Security',
-    description: 'Create secure blockchain solutions and smart contract auditing tools.',
-  },
-  {
-    icon: Shield,
-    title: 'Fraud Detection Systems',
-    description: 'Design AI-powered systems to detect and prevent financial fraud.',
-  },
-  {
-    icon: Code,
-    title: 'Secure dApps',
-    description: 'Build secure decentralized applications with robust security protocols.',
-  },
-  {
-    icon: Lock,
-    title: 'Smart Contracts',
-    description: 'Develop and audit secure smart contracts for blockchain platforms.',
-  },
-];
 
 const HackathonSection = () => {
   const ref = useRef(null);
@@ -74,32 +40,70 @@ const HackathonSection = () => {
           </p>
         </motion.div>
 
-        {/* Focus Areas Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {focusAreas.map((area, index) => (
-            <motion.div
-              key={area.title}
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.3 + index * 0.1 }}
-              className="cyber-card rounded-xl p-6 group hover:neon-border transition-all duration-500 card-3d"
-            >
-              <div className="flex items-start gap-4">
-                <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 group-hover:bg-primary/20 transition-colors">
-                  <area.icon className="w-6 h-6 text-primary icon-hover transition-transform" />
-                </div>
-                <div>
-                  <h4 className="font-orbitron text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                    {area.title}
-                  </h4>
-                  <p className="font-rajdhani text-foreground/70">
-                    {area.description}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        {/* Overview + Pricing/Inclusions */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.35 }}
+          className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto items-stretch"
+        >
+          <div className="cyber-card rounded-xl p-6 neon-border h-full">
+            <h3 className="font-orbitron text-xl font-bold text-primary mb-4">What is a Hackathon?</h3>
+            <div className="space-y-4 font-rajdhani text-foreground/80 leading-relaxed">
+              <p>
+                A hackathon is an intensive, time‑bound innovation sprint where teams collaborate to
+                design and build impactful cybersecurity solutions. You’ll ideate, prototype, and present
+                your solution within the event timeframe.
+              </p>
+              <p>
+                Expect a fast‑paced, mentor‑supported environment with problem statements designed to
+                challenge creativity, security thinking, and execution. Teams iterate quickly, validate
+                ideas, and deliver working demos that solve real‑world cyber challenges.
+              </p>
+              <p>
+                Whether you’re a beginner or a seasoned builder, it’s a chance to learn, network, and
+                ship something meaningful under pressure—exactly like real security teams do.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-6 h-full">
+            <div className="cyber-card rounded-xl p-6 neon-border">
+              <h3 className="font-orbitron text-xl font-bold text-primary mb-4">Hackathon Registration</h3>
+              <ul className="space-y-2 text-foreground/80 font-rajdhani">
+                <li className="flex items-center justify-between border-b border-primary/20 pb-2">
+                  <span>Team of 3</span>
+                  <span className="font-orbitron text-primary">₹900</span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Team of 4</span>
+                  <span className="font-orbitron text-primary">₹1200</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="cyber-card rounded-xl p-6 neon-border">
+              <h3 className="font-orbitron text-xl font-bold text-primary mb-4">What’s Included</h3>
+              <ul className="grid sm:grid-cols-2 gap-2 text-foreground/80 font-rajdhani">
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Food
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Goodies
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Accommodation
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Hospitality
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Curated musical experiences
+                </li>
+              </ul>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );

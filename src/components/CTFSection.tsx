@@ -1,18 +1,6 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { Globe, Lock, Network, Binary, Search, Eye, Skull } from 'lucide-react';
-
-const ctfThemes = [
-  { icon: Globe, title: 'Web Security', color: 'primary' },
-  { icon: Lock, title: 'Cryptography', color: 'secondary' },
-  { icon: Network, title: 'Network Security', color: 'accent' },
-  { icon: Binary, title: 'Reverse Engineering', color: 'primary' },
-  { icon: Search, title: 'Digital Forensics', color: 'secondary' },
-  { icon: Eye, title: 'OSINT', color: 'accent' },
-  { icon: Skull, title: 'Real-world Attack Simulations', color: 'primary' },
-  { icon: Binary, title: 'AI Hacking', color: 'secondary' },
-];
 
 const CTFSection = () => {
   const ref = useRef(null);
@@ -40,75 +28,69 @@ const CTFSection = () => {
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-secondary to-transparent mx-auto mb-6" />
         </motion.div>
 
-        {/* Terminal Style Container */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="max-w-4xl mx-auto mb-12"
-        >
-          <div className="cyber-card rounded-xl overflow-hidden neon-border-green">
-            {/* Terminal Header */}
-            <div className="bg-muted/50 px-4 py-3 flex items-center gap-2 border-b border-secondary/20">
-              <div className="w-3 h-3 rounded-full bg-destructive/70" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500/70" />
-              <div className="w-3 h-3 rounded-full bg-secondary/70" />
-              <span className="ml-4 font-mono-tech text-sm text-muted-foreground">ctf_challenges.sh</span>
-            </div>
-            
-            {/* Terminal Content */}
-            <div className="p-4 md:p-6 font-mono-tech text-xs md:text-sm">
-              <p className="text-secondary mb-2">$ cat /challenges/themes.txt</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                {ctfThemes.map((theme, index) => (
-                  <motion.div
-                    key={theme.title}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={isInView ? { opacity: 1, x: 0 } : {}}
-                    transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group"
-                  >
-                    <theme.icon className={`w-5 h-5 text-${theme.color} icon-hover transition-transform`} />
-                    <span className="text-foreground/90 group-hover:text-foreground transition-colors">
-                      {theme.title}
-                    </span>
-                  </motion.div>
-                ))}
-              </div>
-              <p className="text-secondary mt-6 terminal-cursor">$ ./start_ctf --mode=competitive</p>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Scoreboard Placeholder */}
+        {/* Overview + Pricing/Inclusions */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="cyber-card rounded-xl p-8 max-w-2xl mx-auto text-center"
+          transition={{ duration: 0.6, delay: 0.15 }}
+          className="grid lg:grid-cols-2 gap-6 max-w-5xl mx-auto items-stretch"
         >
-          <h3 className="font-orbitron text-xl font-bold mb-4 text-secondary">
-            Live Scoreboard
-          </h3>
-          <div className="space-y-3">
-            {[1, 2, 3].map((rank) => (
-              <div
-                key={rank}
-                className="flex flex-col sm:flex-row items-center justify-between p-3 rounded-lg bg-muted/30 border border-secondary/10 gap-2"
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`font-orbitron font-bold ${rank === 1 ? 'text-yellow-500' : rank === 2 ? 'text-gray-400' : 'text-amber-600'}`}>
-                    #{rank}
-                  </span>
-                  <span className="font-mono-tech text-sm md:text-base text-foreground/70">Team_{rank}_Placeholder</span>
-                </div>
-                <span className="font-orbitron text-secondary">{1500 - (rank - 1) * 200} pts</span>
-              </div>
-            ))}
+          <div className="cyber-card rounded-xl p-6 neon-border h-full">
+            <h3 className="font-orbitron text-xl font-bold text-primary mb-4">What is a CTF?</h3>
+            <div className="space-y-4 font-rajdhani text-foreground/80 leading-relaxed">
+              <p>
+                Capture The Flag (CTF) is a cybersecurity competition where participants solve
+                hands‑on challenges across web, crypto, forensics, and more. Each solved challenge
+                awards points and moves you up the leaderboard.
+              </p>
+              <p>
+                You’ll analyze vulnerabilities, decode clues, and apply practical security skills under
+                time pressure. Challenges range from beginner to advanced, making it ideal for learning
+                and testing your hacking fundamentals.
+              </p>
+              <p>
+                Compete solo or in a duo, sharpen your skills, and build confidence in real‑world
+                security problem‑solving.
+              </p>
+            </div>
           </div>
-          <p className="font-rajdhani text-sm text-muted-foreground mt-4">
-            * Live scoreboard will be activated during the event
-          </p>
+
+          <div className="space-y-6 h-full">
+            <div className="cyber-card rounded-xl p-6 neon-border">
+              <h3 className="font-orbitron text-xl font-bold text-primary mb-4">CTF Registration</h3>
+              <ul className="space-y-2 text-foreground/80 font-rajdhani">
+                <li className="flex items-center justify-between border-b border-primary/20 pb-2">
+                  <span>Team of 1</span>
+                  <span className="font-orbitron text-primary">₹300</span>
+                </li>
+                <li className="flex items-center justify-between">
+                  <span>Team of 2</span>
+                  <span className="font-orbitron text-primary">₹600</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="cyber-card rounded-xl p-6 neon-border">
+              <h3 className="font-orbitron text-xl font-bold text-primary mb-4">What’s Included</h3>
+              <ul className="grid sm:grid-cols-2 gap-2 text-foreground/80 font-rajdhani">
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Food
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Goodies
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Accommodation
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Hospitality
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Curated musical experiences
+                </li>
+              </ul>
+            </div>
+          </div>
         </motion.div>
       </div>
     </section>

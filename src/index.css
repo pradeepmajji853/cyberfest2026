@@ -6,79 +6,80 @@
 
 @layer base {
   :root {
-    /* CyberFest Dark Theme - Deep Navy/Black with Neon Accents */
-    --background: 222 47% 5%;
-    --foreground: 200 100% 95%;
+    /* Cobalt Theme - Black, White, and Cobalt Blue */
+    --background: 220 20% 6%;
+    --foreground: 0 0% 100%;
 
-    --card: 222 50% 8%;
-    --card-foreground: 200 100% 95%;
+    --card: 220 18% 10%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 222 50% 8%;
-    --popover-foreground: 200 100% 95%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 0 0% 100%;
 
-    /* Primary: Electric Cyan */
-    --primary: 187 100% 50%;
-    --primary-foreground: 222 47% 5%;
+    /* Primary: Cobalt Blue */
+    --primary: 218 100% 56%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary: Matrix Green */
-    --secondary: 140 100% 50%;
-    --secondary-foreground: 222 47% 5%;
+    /* Secondary: Deep Cobalt */
+    --secondary: 218 70% 38%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 30% 15%;
-    --muted-foreground: 200 30% 60%;
+    --muted: 220 14% 16%;
+    --muted-foreground: 0 0% 80%;
 
-    /* Accent: Bright Blue */
-    --accent: 210 100% 60%;
-    --accent-foreground: 222 47% 5%;
+    /* Accent: Cobalt Blue */
+    --accent: 218 100% 56%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    /* Destructive (kept in palette) */
+    --destructive: 218 100% 56%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 210 50% 20%;
-    --input: 210 50% 15%;
-    --ring: 187 100% 50%;
+    --border: 220 15% 18%;
+    --input: 220 15% 14%;
+    --ring: 218 100% 56%;
 
     --radius: 0.5rem;
 
-    /* Custom Cyber Colors */
-    --cyber-dark: 222 47% 5%;
-    --cyber-navy: 222 50% 10%;
-    --cyber-panel: 222 45% 12%;
-    --cyber-cyan: 187 100% 50%;
-    --cyber-green: 140 100% 50%;
-    --cyber-blue: 210 100% 60%;
-    --cyber-glow: 187 100% 70%;
+    /* Custom Cobalt Colors */
+    --cyber-dark: 220 20% 6%;
+    --cyber-navy: 220 18% 10%;
+    --cyber-panel: 220 18% 12%;
+    --cyber-cyan: 218 100% 56%;
+    --cyber-green: 218 100% 56%;
+    --cyber-blue: 218 80% 42%;
+    --cyber-glow: 218 100% 70%;
 
-    --sidebar-background: 222 50% 8%;
-    --sidebar-foreground: 200 100% 95%;
-    --sidebar-primary: 187 100% 50%;
-    --sidebar-primary-foreground: 222 47% 5%;
-    --sidebar-accent: 222 45% 15%;
-    --sidebar-accent-foreground: 200 100% 95%;
-    --sidebar-border: 210 50% 20%;
-    --sidebar-ring: 187 100% 50%;
+    --sidebar-background: 220 18% 10%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 218 100% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 16% 14%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 218 100% 56%;
   }
 
   .dark {
-    --background: 222 47% 5%;
-    --foreground: 200 100% 95%;
-    --card: 222 50% 8%;
-    --card-foreground: 200 100% 95%;
-    --popover: 222 50% 8%;
-    --popover-foreground: 200 100% 95%;
-    --primary: 187 100% 50%;
-    --primary-foreground: 222 47% 5%;
-    --secondary: 140 100% 50%;
-    --secondary-foreground: 222 47% 5%;
-    --muted: 222 30% 15%;
-    --muted-foreground: 200 30% 60%;
-    --accent: 210 100% 60%;
-    --accent-foreground: 222 47% 5%;
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 210 50% 20%;
-    --input: 210 50% 15%;
-    --ring: 187 100% 50%;
+    --background: 220 20% 6%;
+    --foreground: 0 0% 100%;
+    --card: 220 18% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 220 18% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 218 100% 56%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 218 70% 38%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 14% 16%;
+    --muted-foreground: 0 0% 80%;
+    --accent: 218 100% 56%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 218 100% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 18%;
+    --input: 220 15% 14%;
+    --ring: 218 100% 56%;
   }
 }
 
@@ -117,9 +118,9 @@
   body {
     @apply bg-background text-foreground font-rajdhani;
     background: linear-gradient(135deg, 
-      hsl(222 47% 5%) 0%, 
-      hsl(222 50% 8%) 50%, 
-      hsl(222 47% 5%) 100%);
+      hsl(220 20% 6%) 0%, 
+      hsl(220 18% 10%) 50%, 
+      hsl(220 20% 6%) 100%);
     min-height: 100vh;
   }
 }
@@ -128,8 +129,8 @@
   /* Cyber Grid Background */
   .cyber-grid {
     background-image: 
-      linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+      linear-gradient(rgba(0, 71, 171, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 71, 171, 0.03) 1px, transparent 1px);
     background-size: 50px 50px;
     animation: grid-move 20s linear infinite;
   }
@@ -346,7 +347,7 @@
 
   /* Hexagon Pattern */
   .hex-pattern {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%2300f0ff' fill-opacity='0.03'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%230047AB' fill-opacity='0.03'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
   }
 
   /* Data Flow Visualization */

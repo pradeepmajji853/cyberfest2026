@@ -1,10 +1,10 @@
-# CyberFest 2K26 - Official Website
+# CyberFest 2026 - Official Website
 
-A National-Level Cybersecurity Conclave website for CyberFest 2K26, hosted at CBIT, Hyderabad, and organized by Digital Defence Club (DDC).
+A National-Level Cybersecurity Conclave website for CyberFest 2026, hosted at CBIT, Hyderabad, and organized by Digital Defence Club (DDC).
 
 ## 🎯 Event Overview
 
-- **Event:** CyberFest 2K26 - National Cybersecurity Conclave
+- **Event:** CyberFest 2026 - National Cybersecurity Conclave
 - **Dates:** 6th & 7th February 2026
 - **Venue:** Chaitanya Bharathi Institute of Technology (CBIT), Hyderabad
 - **Duration:** 36 Hours Continuous Event
@@ -120,4 +120,4 @@ npm run build
 
 ---
 
-© 2026 CyberFest 2K26 | Digital Defence Club, CBIT
+© 2026 CyberFest 2026 | Digital Defence Club, CBIT

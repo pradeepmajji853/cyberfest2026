@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 
 interface IntroVideoProps {
   videoSrc: string;
-  onVideoEnd?: (lastFrameUrl: string) => void;
+  onVideoEnd?: (lastFrameUrl?: string) => void;
 }
 
 const IntroVideo = ({ videoSrc, onVideoEnd }: IntroVideoProps) => {
-  const [showVideo, setShowVideo] = useState(true);
   const [videoEnded, setVideoEnded] = useState(false);
   const [lastFrameUrl, setLastFrameUrl] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -32,9 +31,7 @@ const IntroVideo = ({ videoSrc, onVideoEnd }: IntroVideoProps) => {
           setLastFrameUrl(dataUrl);
 
           // Call the callback with the captured frame
-          if (onVideoEnd) {
-            onVideoEnd(dataUrl);
-          }
+          onVideoEnd?.(dataUrl);
         }
       }
       
@@ -66,11 +63,29 @@ const IntroVideo = ({ videoSrc, onVideoEnd }: IntroVideoProps) => {
     };
   }, [onVideoEnd]);
 
+  const handleSkip = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    onVideoEnd?.();
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        handleSkip();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <>
-      <div
-        className={`fixed inset-0 z-[100] overflow-hidden`}
-      >
+      <div className="fixed inset-0 z-[100] overflow-hidden">
         {/* Mobile-optimized video container */}
         <div className="w-full h-full flex items-center justify-center bg-black">
           <video

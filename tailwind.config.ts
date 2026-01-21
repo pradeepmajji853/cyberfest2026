@@ -103,8 +103,8 @@ export default {
           "100%": { opacity: "1", transform: "scale(1)" },
         },
         "glow-pulse": {
-          "0%, 100%": { boxShadow: "0 0 20px hsl(187 100% 50% / 0.3)" },
-          "50%": { boxShadow: "0 0 40px hsl(187 100% 50% / 0.6)" },
+          "0%, 100%": { boxShadow: "0 0 20px hsl(var(--cyber-cyan) / 0.3)" },
+          "50%": { boxShadow: "0 0 40px hsl(var(--cyber-cyan) / 0.6)" },
         },
         "typing": {
           "0%": { width: "0" },
@@ -113,6 +113,14 @@ export default {
         "float": {
           "0%, 100%": { transform: "translateY(0)" },
           "50%": { transform: "translateY(-20px)" },
+        },
+        "marquee": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+        "marquee-reverse": {
+          "0%": { transform: "translateX(-50%)" },
+          "100%": { transform: "translateX(0)" },
         },
       },
       animation: {
@@ -125,6 +133,8 @@ export default {
         "glow-pulse": "glow-pulse 2s ease-in-out infinite",
         "typing": "typing 3s steps(40) forwards",
         "float": "float 6s ease-in-out infinite",
+        "marquee": "marquee var(--marquee-duration, 20s) linear infinite",
+        "marquee-reverse": "marquee-reverse var(--marquee-duration, 20s) linear infinite",
       },
     },
   },

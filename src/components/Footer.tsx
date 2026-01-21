@@ -1,13 +1,11 @@
 import { motion } from 'framer-motion';
-import { Shield, Mail, Linkedin, Twitter, Instagram, Github } from 'lucide-react';
+import { Shield, Mail, Linkedin, Instagram } from 'lucide-react';
 import ddcLogo from '@/assets/ddc-logo.png';
 import cbitLogo from '@/assets/cbit-logo.png';
 
 const socialLinks = [
   { icon: Linkedin, href: 'https://in.linkedin.com/company/digital-defence-club', label: 'LinkedIn' },
-  { icon: Twitter, href: '#', label: 'Twitter' },
   { icon: Instagram, href: 'https://www.instagram.com/ddc_cbit/', label: 'Instagram' },
-  { icon: Github, href: '#', label: 'GitHub' },
 ];
 
 const Footer = () => {
@@ -19,7 +17,7 @@ const Footer = () => {
             <div className="space-y-6">
             <div className="flex items-center gap-3">
               <Shield className="w-8 h-8 md:w-10 md:h-10 text-primary" />
-              <span className="font-orbitron text-lg md:text-xl font-bold gradient-text">CYBERFEST 2K26</span>
+              <span className="font-orbitron text-lg md:text-xl font-bold gradient-text">CYBERFEST 2026</span>
             </div>
             <p className="font-rajdhani text-base text-foreground/70 leading-relaxed">
               A National-Level Cybersecurity Conclave bringing together hackers, researchers, and industry experts.
@@ -55,11 +53,11 @@ const Footer = () => {
                 Digital Defence Club (DDC), CBIT
               </p>
               <a
-                href="mailto:ddc@cbit.ac.in"
+                href="mailto:ccc@cbit.ac.in"
                 className="flex items-center gap-2 font-mono-tech text-primary hover:text-secondary transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                ddc@cbit.ac.in
+                ccc@cbit.ac.in
               </a>
 
               <div className="pt-2">
@@ -155,7 +153,7 @@ const Footer = () => {
         {/* Bottom Footer */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="font-mono-tech text-sm text-muted-foreground text-center md:text-left">
-            © 2026 CyberFest 2K26. All rights reserved.
+            © 2026 CyberFest 2026. All rights reserved.
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'framer-motion';
 import { useRef } from 'react';
-import { GraduationCap, Briefcase, Users, Award } from 'lucide-react';
+import { Laptop, ShieldCheck, Bug } from 'lucide-react';
 
 const ExpertSessionsSection = () => {
   const ref = useRef(null);
@@ -18,16 +18,16 @@ const ExpertSessionsSection = () => {
           className="text-center mb-16"
         >
           <h2 className="font-orbitron text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            <span className="gradient-text">Expert Sessions</span>
+            <span className="gradient-text">Hands-on Hacking Sessions</span>
           </h2>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent mx-auto mb-6" />
           <p className="font-rajdhani text-lg text-foreground/70 max-w-2xl mx-auto">
-            Learn from the best in cybersecurity industry and academia
+            Three practical, industry-led sessions by ethical hackers
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {/* Panel Talks & Workshops */}
+        <div className="grid lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          {/* Session 1 */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
@@ -36,39 +36,36 @@ const ExpertSessionsSection = () => {
           >
             <div className="flex items-center gap-4 mb-6">
               <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
-                <Users className="w-8 h-8 text-primary icon-hover" />
+                <Laptop className="w-8 h-8 text-primary icon-hover" />
               </div>
-              <h3 className="font-orbitron text-2xl font-bold">Panel Talks & Workshops</h3>
+              <h3 className="font-orbitron text-2xl font-bold">Web App Exploitation Lab</h3>
             </div>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30">
-                <GraduationCap className="w-6 h-6 text-accent shrink-0 mt-1 icon-hover" />
-                <div>
-                  <h4 className="font-rajdhani text-lg font-semibold">IIT / NIT Faculty</h4>
-                  <p className="font-rajdhani text-foreground/70">Leading academic researchers in cybersecurity</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30">
-                <Briefcase className="w-6 h-6 text-secondary shrink-0 mt-1 icon-hover" />
-                <div>
-                  <h4 className="font-rajdhani text-lg font-semibold">Cybersecurity Startup Founders</h4>
-                  <p className="font-rajdhani text-foreground/70">Industry leaders building the future of security</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4 p-4 rounded-lg bg-muted/30">
-                <Award className="w-6 h-6 text-primary shrink-0 mt-1 icon-hover" />
-                <div>
-                  <h4 className="font-rajdhani text-lg font-semibold">Industry Experts</h4>
-                  <p className="font-rajdhani text-foreground/70">Professionals from leading tech companies</p>
-                </div>
-              </div>
-            </div>
+            <p className="font-rajdhani text-foreground/70 leading-relaxed">
+              Hands‑on lab with real‑world vulnerabilities: recon, exploitation, and secure fixes.
+              Led by industry ethical hackers with live walkthroughs and Q&A.
+            </p>
           </motion.div>
 
-          {/* Judging Panel */}
+          {/* Session 2 */}
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={isInView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="cyber-card rounded-2xl p-8"
+          >
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
+                <Bug className="w-8 h-8 text-primary icon-hover" />
+              </div>
+              <h3 className="font-orbitron text-2xl font-bold">Offensive Security Toolkit</h3>
+            </div>
+            <p className="font-rajdhani text-foreground/70 leading-relaxed">
+              Learn practical techniques for vulnerability discovery, enumeration, and exploit
+              chaining—delivered by certified ethical hackers from the industry.
+            </p>
+          </motion.div>
+
+          {/* Session 3 */}
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
@@ -76,33 +73,15 @@ const ExpertSessionsSection = () => {
             className="cyber-card rounded-2xl p-8"
           >
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-4 rounded-xl bg-secondary/10 border border-secondary/30">
-                <Award className="w-8 h-8 text-secondary icon-hover" />
+              <div className="p-4 rounded-xl bg-primary/10 border border-primary/30">
+                <ShieldCheck className="w-8 h-8 text-primary icon-hover" />
               </div>
-              <h3 className="font-orbitron text-2xl font-bold">Judging Panel</h3>
+              <h3 className="font-orbitron text-2xl font-bold">Incident Response Drill</h3>
             </div>
-
-            <div className="text-center mb-8">
-              <div className="font-orbitron text-5xl font-bold text-secondary mb-2">6</div>
-              <p className="font-rajdhani text-lg text-foreground/70">Expert Judges</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="cyber-card rounded-xl p-6 text-center">
-                <div className="font-orbitron text-3xl font-bold text-primary mb-2">3</div>
-                <p className="font-rajdhani text-foreground/70">Industry Experts</p>
-              </div>
-              <div className="cyber-card rounded-xl p-6 text-center">
-                <div className="font-orbitron text-3xl font-bold text-accent mb-2">3</div>
-                <p className="font-rajdhani text-foreground/70">CBIT Faculty</p>
-              </div>
-            </div>
-
-            <div className="mt-6 p-4 rounded-lg bg-muted/20 border border-dashed border-muted-foreground/30 text-center">
-              <p className="font-mono-tech text-sm text-muted-foreground">
-                Judge profiles to be announced soon
-              </p>
-            </div>
+            <p className="font-rajdhani text-foreground/70 leading-relaxed">
+              A guided blue‑team vs red‑team style exercise covering detection, triage, and
+              mitigation—built around real attack scenarios.
+            </p>
           </motion.div>
         </div>
       </div>

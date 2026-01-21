@@ -28,7 +28,7 @@ const faqs = [
   },
   {
     question: 'What are the registration fees?',
-    answer: 'For Hackathon: ₹1200 for a team of 3, ₹1500 for a team of 4. For CTF: ₹300 for solo participation, ₹600 for a team of 2.',
+    answer: 'For Hackathon: ₹900 for a team of 3, ₹1200 for a team of 4. For CTF: ₹300 for solo participation, ₹600 for a team of 2.',
   },
   {
     question: 'What is the prize pool?',
@@ -114,23 +114,6 @@ const FAQSection = () => {
           </Accordion>
         </motion.div>
 
-        {/* Contact CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="text-center mt-12"
-        >
-          <p className="font-rajdhani text-foreground/60 mb-4">
-            Still have questions?
-          </p>
-          <a
-            href="#footer"
-            className="inline-block px-6 py-3 bg-primary/10 border border-primary/30 rounded-lg hover:bg-primary/20 transition-colors font-rajdhani font-semibold text-primary"
-          >
-            Contact Us
-          </a>
-        </motion.div>
       </div>
     </section>
   );

@@ -31,10 +31,10 @@ const CyberBackground = () => {
     }
 
     const draw = () => {
-      ctx.fillStyle = 'rgba(5, 8, 22, 0.05)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+      ctx.fillStyle = 'rgba(0, 71, 171, 0.15)';
       ctx.font = `${fontSize}px monospace`;
 
       for (let i = 0; i < drops.length; i++) {

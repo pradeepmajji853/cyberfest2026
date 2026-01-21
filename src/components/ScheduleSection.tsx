@@ -19,6 +19,7 @@ const day1Schedule: ScheduleEvent[] = [
   { time: '04:30 PM', title: 'Hackathon & CTF Begins', icon: Terminal, type: 'general' },
   { time: '05:00 PM – Overnight', title: 'Hackathon (Venue-1)', icon: Terminal, type: 'hackathon' },
   { time: '05:00 PM – Overnight', title: 'CTF Challenges (Venue-2)', icon: Flag, type: 'ctf' },
+  { time: '09:00 PM', title: 'Dinner', icon: Utensils, type: 'break' },
 ];
 
 const day2Schedule: ScheduleEvent[] = [
@@ -33,15 +34,26 @@ const day2Schedule: ScheduleEvent[] = [
 const getTypeColor = (type: ScheduleEvent['type']) => {
   switch (type) {
     case 'hackathon':
-      return 'border-l-primary bg-primary/5';
+      return 'border-primary/60 bg-primary/10';
     case 'ctf':
-      return 'border-l-secondary bg-secondary/5';
+      return 'border-secondary/60 bg-secondary/10';
     case 'break':
-      return 'border-l-muted-foreground bg-muted/20';
+      return 'border-foreground/20 bg-foreground/5';
     default:
-      return 'border-l-accent bg-accent/5';
+      return 'border-primary/40 bg-primary/5';
   }
 };
+
+type TimelineItem =
+  | { kind: 'day'; label: string }
+  | { kind: 'event'; event: ScheduleEvent };
+
+const timelineItems: TimelineItem[] = [
+  { kind: 'day', label: 'Day 1' },
+  ...day1Schedule.map((event) => ({ kind: 'event', event } as const)),
+  { kind: 'day', label: 'Day 2' },
+  ...day2Schedule.map((event) => ({ kind: 'event', event } as const)),
+];
 
 const ScheduleSection = () => {
   const ref = useRef(null);
@@ -66,96 +78,59 @@ const ScheduleSection = () => {
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
-          {/* Day 1 */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="cyber-card rounded-2xl overflow-hidden"
-          >
-            <div className="bg-gradient-to-r from-primary/20 to-accent/20 p-6 border-b border-primary/20">
-              <h3 className="font-orbitron text-xl md:text-2xl font-bold flex items-center gap-3">
-                <Clock className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-                Day 1 - 6th February
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {day1Schedule.map((event, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.4, delay: 0.3 + index * 0.05 }}
-                  className={`flex gap-4 p-4 rounded-lg border-l-4 ${getTypeColor(event.type)} transition-all hover:scale-[1.02]`}
-                >
-                  <event.icon className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
-                  <div className="flex-1">
-                    <p className="font-mono-tech text-sm text-primary">{event.time}</p>
-                    <p className="font-rajdhani text-base md:text-lg font-semibold">{event.title}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+        <div className="relative max-w-6xl mx-auto">
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-primary/40" />
+          <div className="space-y-10">
+            {timelineItems.map((item, index) => {
+              if (item.kind === 'day') {
+                return (
+                  <motion.div
+                    key={`${item.label}-${index}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={isInView ? { opacity: 1, y: 0 } : {}}
+                    transition={{ duration: 0.4, delay: 0.1 + index * 0.03 }}
+                    className="relative flex items-center justify-center"
+                  >
+                    <div className="z-10 flex items-center justify-center w-16 h-16 rounded-full bg-background border-2 border-primary text-primary font-orbitron text-sm shadow-[0_0_20px_rgba(0,71,171,0.35)]">
+                      {item.label}
+                    </div>
+                  </motion.div>
+                );
+              }
 
-          {/* Day 2 */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={isInView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="cyber-card rounded-2xl overflow-hidden"
-          >
-            <div className="bg-gradient-to-r from-secondary/20 to-primary/20 p-6 border-b border-secondary/20">
-              <h3 className="font-orbitron text-xl md:text-2xl font-bold flex items-center gap-3">
-                <Clock className="w-5 h-5 md:w-6 md:h-6 text-secondary" />
-                Day 2 - 7th February
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {day2Schedule.map((event, index) => (
+              const eventIndex = timelineItems.slice(0, index).filter((i) => i.kind === 'event').length;
+              const isLeft = eventIndex % 2 === 0;
+              return (
                 <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: 20 }}
+                  key={`${item.event.title}-${index}`}
+                  initial={{ opacity: 0, x: isLeft ? -20 : 20 }}
                   animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.4, delay: 0.5 + index * 0.05 }}
-                  className={`flex gap-4 p-4 rounded-lg border-l-4 ${getTypeColor(event.type)} transition-all hover:scale-[1.02]`}
+                  transition={{ duration: 0.4, delay: 0.2 + eventIndex * 0.04 }}
+                  className={`relative flex items-center ${isLeft ? 'justify-start' : 'justify-end'}`}
                 >
-                  <event.icon className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
-                  <div className="flex-1">
-                    <p className="font-mono-tech text-sm text-secondary">{event.time}</p>
-                    <p className="font-rajdhani text-base md:text-lg font-semibold">{event.title}</p>
+                  <div className="absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary shadow-[0_0_12px_rgba(0,71,171,0.7)]" />
+                  <div
+                    className={`w-full md:w-[46%] cyber-card rounded-2xl border ${getTypeColor(item.event.type)} px-6 py-5 shadow-[0_0_30px_rgba(0,71,171,0.2)]`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1 flex items-center justify-center w-8 h-8 rounded-full bg-primary/15 border border-primary/40">
+                        <item.event.icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <span className="inline-flex items-center rounded-md bg-primary/20 px-3 py-1 font-mono-tech text-xs text-primary">
+                          {item.event.time}
+                        </span>
+                        <p className="mt-2 font-rajdhani text-base md:text-lg font-semibold text-foreground/90">
+                          {item.event.title}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
-              ))}
-            </div>
-          </motion.div>
+              );
+            })}
+          </div>
         </div>
-
-        {/* Legend */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.5, delay: 0.8 }}
-          className="flex flex-wrap justify-center gap-6 mt-12"
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-primary/20 border-l-4 border-primary" />
-            <span className="font-rajdhani text-sm text-foreground/70">Hackathon</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-secondary/20 border-l-4 border-secondary" />
-            <span className="font-rajdhani text-sm text-foreground/70">CTF</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-accent/20 border-l-4 border-accent" />
-            <span className="font-rajdhani text-sm text-foreground/70">General</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-muted/20 border-l-4 border-muted-foreground" />
-            <span className="font-rajdhani text-sm text-foreground/70">Break</span>
-          </div>
-        </motion.div>
       </div>
     </section>
   );

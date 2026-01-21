@@ -32,7 +32,7 @@ const EventDetailsSection = () => {
           </h2>
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent mx-auto mb-6" />
           <p className="font-rajdhani text-lg text-foreground/70 max-w-2xl mx-auto">
-            Everything you need to know about CyberFest 2K26
+            Everything you need to know about CyberFest 2026
           </p>
         </motion.div>
 

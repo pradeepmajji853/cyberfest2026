@@ -3,6 +3,8 @@ import Navbar from '@/components/Navbar';
 import HeroSection from '@/components/HeroSection';
 import AboutSection from '@/components/AboutSection';
 import EventDetailsSection from '@/components/EventDetailsSection';
+import HackathonSection from '@/components/HackathonSection';
+import CTFSection from '@/components/CTFSection';
 import ExpertSessionsSection from '@/components/ExpertSessionsSection';
 import ScheduleSection from '@/components/ScheduleSection';
 import VenueSection from '@/components/VenueSection';
@@ -12,7 +14,7 @@ import Footer from '@/components/Footer';
 import RegistrationDialog from '@/components/RegistrationDialog';
 // import CyberBackground from '@/components/CyberBackground';
 import IntroVideo from '@/components/video/IntroVideo';
-import ContinuousBackground from '@/components/ContinuousBackground';
+import Plasma from '@/components/Plasma';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Index = () => {
@@ -30,7 +32,18 @@ const Index = () => {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-x-hidden">
-      <ContinuousBackground />
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+          <Plasma
+            color="#0047ab"
+            speed={2}
+            direction="forward"
+            scale={1.1}
+            opacity={0.8}
+            mouseInteractive={true}
+          />
+        </div>
+      </div>
       {/* Intro Video - Hidden on mobile */}
       {!introVideoEnded && !isMobile && (
         <div className={`fixed inset-0 z-50 transition-opacity duration-1000 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
@@ -49,6 +62,8 @@ const Index = () => {
         <HeroSection onRegisterClick={() => setIsRegistrationOpen(true)} />
         <AboutSection />
         <EventDetailsSection />
+        <HackathonSection />
+        <CTFSection />
         <ExpertSessionsSection />
         <ScheduleSection />
         <VenueSection />

@@ -9,15 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_hsl(187_100%_50%/0.5)]",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_hsl(var(--cyber-cyan)/0.5)]",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:border-primary hover:shadow-[0_0_20px_hsl(187_100%_50%/0.3)]",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-[0_0_20px_hsl(140_100%_50%/0.5)]",
+        outline: "border border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:border-primary hover:shadow-[0_0_20px_hsl(var(--cyber-cyan)/0.3)]",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-[0_0_20px_hsl(var(--cyber-cyan)/0.5)]",
         ghost: "hover:bg-muted hover:text-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        cyber: "bg-gradient-to-r from-primary to-accent text-primary-foreground hover:shadow-[0_0_30px_hsl(187_100%_50%/0.6)] hover:scale-105 border border-primary/30 morph-button",
-        cyberOutline: "border-2 border-primary bg-transparent text-primary hover:bg-primary/10 hover:shadow-[0_0_25px_hsl(187_100%_50%/0.4)] relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:via-primary/20 before:to-primary/0 before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-700 morph-button",
-        cyberGreen: "bg-gradient-to-r from-secondary to-primary text-secondary-foreground hover:shadow-[0_0_30px_hsl(140_100%_50%/0.6)] hover:scale-105 border border-secondary/30",
+        cyber: "bg-gradient-to-r from-primary to-accent text-primary-foreground hover:shadow-[0_0_30px_hsl(var(--cyber-cyan)/0.6)] hover:scale-105 border border-primary/30 morph-button",
+        cyberOutline: "border-2 border-primary bg-transparent text-primary hover:bg-primary/10 hover:shadow-[0_0_25px_hsl(var(--cyber-cyan)/0.4)] relative overflow-hidden before:absolute before:inset-0 before:bg-gradient-to-r before:from-primary/0 before:via-primary/20 before:to-primary/0 before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-700 morph-button",
+        cyberGreen: "bg-gradient-to-r from-secondary to-primary text-secondary-foreground hover:shadow-[0_0_30px_hsl(var(--cyber-cyan)/0.6)] hover:scale-105 border border-secondary/30",
       },
       size: {
         default: "h-10 px-4 py-2",

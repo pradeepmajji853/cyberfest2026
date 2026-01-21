@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { ReactNode } from 'react';
 
 interface MarqueeProps {
@@ -10,26 +9,19 @@ interface MarqueeProps {
 
 const Marquee = ({ children, reverse = false, speed = 20, pauseOnHover = true }: MarqueeProps) => {
   return (
-    <div className="relative overflow-hidden w-full whitespace-nowrap">
-      <motion.div
-        className="inline-flex"
-        animate={{
-          x: reverse ? ['-100%', '0%'] : ['0%', '-100%'],
-        }}
-        transition={{
-          duration: speed,
-          ease: 'linear',
-          repeat: Infinity,
-          repeatType: 'loop',
-        }}
-        whileHover={pauseOnHover ? { animationPlayState: 'paused' } : undefined}
+    <div className="relative overflow-hidden w-full">
+      <div
+        className={`flex w-max items-center ${reverse ? 'animate-marquee-reverse' : 'animate-marquee'} ${
+          pauseOnHover ? 'hover:[animation-play-state:paused]' : ''
+        }`}
+        style={{ ['--marquee-duration' as string]: `${speed}s` }}
       >
         {[...children, ...children].map((child, index) => (
-          <div key={index} className="mx-4">
+          <div key={index} className="mx-4 shrink-0">
             {child}
           </div>
         ))}
-      </motion.div>
+      </div>
     </div>
   );
 };

@@ -22,7 +22,7 @@ const HeroSection = ({ onRegisterClick }: HeroSectionProps) => {
   return (
     <section id="home" className="relative min-h-[100svh] flex items-center justify-center overflow-hidden py-10 sm:py-12 md:py-16">
       <div className="container mx-auto px-4 relative z-10">
-        <div className="relative -translate-y-4 sm:-translate-y-6 md:-translate-y-10 flex flex-col items-center text-center bg-black/30 backdrop-blur-sm border border-white/10 rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl max-w-5xl mx-auto">
+        <div className="relative -translate-y-4 sm:-translate-y-6 md:-translate-y-10 flex flex-col items-center text-center p-6 sm:p-8 md:p-10 max-w-5xl mx-auto">
           {/* Main Logo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -32,9 +32,22 @@ const HeroSection = ({ onRegisterClick }: HeroSectionProps) => {
           >
             <img 
               src={cyberfestLogo} 
-              alt="CyberFest 2K26" 
-              className="w-full max-w-xl sm:max-w-xl md:max-w-xl mx-auto drop-shadow-[0_0_30px_rgba(0,240,255,0.5)] object-contain"
+              alt="CyberFest 2026" 
+              className="w-full max-w-xl sm:max-w-xl md:max-w-xl mx-auto drop-shadow-[0_0_30px_rgba(0,71,171,0.5)] object-contain"
             />
+          </motion.div>
+
+          {/* Main Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mb-4 sm:mb-5"
+          >
+            <h2 className="font-orbitron text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-wider">
+              <span className="text-foreground/95">CyberFest</span>{" "}
+              <span className="text-primary">2026</span>
+            </h2>
           </motion.div>
 
           {/* Partner Logos - Below Main Logo */}
@@ -73,7 +86,7 @@ const HeroSection = ({ onRegisterClick }: HeroSectionProps) => {
             transition={{ duration: 0.6, delay: 0.7 }}
             className="font-mono-tech text-xs sm:text-sm md:text-base text-primary mb-5 sm:mb-6 tracking-wider px-3 sm:px-4"
           >
-            Hackathon | Capture The Flag | Panel Talks | Workshops | Startup Expo
+            Hackathon | Capture The Flag | Panel Talks | Workshops
           </motion.p>
 
           {/* Event Details */}
