@@ -84,12 +84,12 @@ const Admin = () => {
 
   const filteredRegistrations = registrations.filter(reg => {
     const matchesSearch = 
-      reg.teamName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.teamMembers.some(member => 
-        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.phoneNumber.includes(searchTerm)
+      (reg.teamName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (reg.transactionId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (reg.teamMembers || []).some(member => 
+        (member.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (member.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (member.phoneNumber || '').includes(searchTerm)
       );
     
     const matchesFilter = eventFilter === 'all' || reg.eventType === eventFilter;
