@@ -11,6 +11,7 @@ interface PlasmaProps {
   scale?: number;
   opacity?: number;
   mouseInteractive?: boolean;
+  dpr?: number;
 }
 
 const hexToRgb = (hex: string): [number, number, number] => {
@@ -102,6 +103,7 @@ export const Plasma = ({
   scale = 1,
   opacity = 1,
   mouseInteractive = true,
+  dpr = 2,
 }: PlasmaProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mousePos = useRef({ x: 0, y: 0 });
@@ -119,7 +121,7 @@ export const Plasma = ({
       webgl: 2,
       alpha: true,
       antialias: false,
-      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      dpr: Math.min(window.devicePixelRatio || 1, dpr),
     });
     const gl = renderer.gl;
     const canvas = gl.canvas;

@@ -39,11 +39,12 @@ const Index = () => {
           <div style={{ width: '100%', height: '100%', position: 'relative' }}>
             <Plasma
               color="#0047ab"
-              speed={2}
+              speed={1.2}
               direction="forward"
-              scale={1.1}
-              opacity={0.8}
-              mouseInteractive={true}
+              scale={1.05}
+              opacity={0.6}
+              mouseInteractive={false}
+              dpr={1.25}
             />
           </div>
         )}
