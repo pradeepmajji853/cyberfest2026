@@ -55,22 +55,28 @@ const HeroSection = ({ onRegisterClick }: HeroSectionProps) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-8 mb-5 sm:mb-6 px-2"
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 md:gap-8 mb-5 sm:mb-6 px-2"
           >
-            <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-white/10">
-              <img src={iicLogo} alt="IIC Logo" className="h-7 sm:h-9 md:h-12 object-contain" />
+            <div className="flex items-center justify-center w-full sm:w-auto">
+              <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg bg-white/90 backdrop-blur-sm border border-white/10">
+                <img src={iicLogo} alt="IIC Logo" className="h-8 sm:h-9 md:h-12 object-contain" />
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-              <img
-                src={cbitLogo}
-                alt="CBIT Logo"
-                className="h-14 sm:h-16 md:h-20 lg:h-24 object-contain"
-              />
+            <div className="flex items-center justify-center w-full sm:w-auto">
+              <div className="flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+                <img
+                  src={cbitLogo}
+                  alt="CBIT Logo"
+                  className="h-16 sm:h-16 md:h-20 lg:h-24 object-contain"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden">
-              <img src={ddcLogo} alt="DDC Logo" className="w-full h-full rounded-full object-cover" />
+            <div className="flex items-center justify-center w-full sm:w-auto">
+              <div className="flex items-center justify-center w-14 h-14 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 overflow-hidden">
+                <img src={ddcLogo} alt="DDC Logo" className="w-full h-full rounded-full object-cover" />
+              </div>
             </div>
           </motion.div>
 
