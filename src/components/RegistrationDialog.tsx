@@ -61,7 +61,10 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
   const getPrice = () => {
     if (!eventType || !teamSize) return 0;
     if (eventType === 'hackathon') {
-      return teamSize === 3 ? 900 : 1200;
+      if (teamSize === 1) return 300;
+      if (teamSize === 2) return 600;
+      if (teamSize === 3) return 900;
+      return 1200; // teamSize === 4
     } else {
       return teamSize === 1 ? 300 : 600;
     }
@@ -310,6 +313,12 @@ const EventSelection = ({ onSelect }: { onSelect: (type: EventType) => void }) =
           <h4 className="text-2xl font-orbitron font-bold text-primary mb-3">Hackathon</h4>
           <div className="space-y-2 text-foreground/80">
             <p className="flex items-center justify-center gap-2">
+              <span className="text-primary font-bold">₹300</span> - Solo
+            </p>
+            <p className="flex items-center justify-center gap-2">
+              <span className="text-primary font-bold">₹600</span> - Team of 2
+            </p>
+            <p className="flex items-center justify-center gap-2">
               <span className="text-primary font-bold">₹900</span> - Team of 3
             </p>
             <p className="flex items-center justify-center gap-2">
@@ -359,8 +368,10 @@ const TeamSizeSelection = ({
   const options =
     eventType === 'hackathon'
       ? [
-          { size: 3, price: 900 },
-          { size: 4, price: 1200 },
+          { size: 1, price: 300, label: 'Solo' },
+          { size: 2, price: 600, label: 'Team of 2' },
+          { size: 3, price: 900, label: 'Team of 3' },
+          { size: 4, price: 1200, label: 'Team of 4' },
         ]
       : [
           { size: 1, price: 300, label: 'Solo' },
@@ -377,6 +388,14 @@ const TeamSizeSelection = ({
           Choose how many members will be in your team
         </p>
       </div>
+
+      {eventType === 'hackathon' && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-6">
+          <p className="text-yellow-400 text-sm text-center">
+            <strong>Note:</strong> Teams with 1 or 2 members will be merged with other small teams during the event to ensure optimal collaboration.
+          </p>
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-6">
         {options.map((option) => (
