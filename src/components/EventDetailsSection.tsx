@@ -9,7 +9,7 @@ const eventDetails = [
   { icon: Users, label: 'Organized By', value: 'Digital Defence Club (DDC), CBIT', color: 'accent' },
   { icon: Calendar, label: 'Dates', value: '6th & 7th February 2026', color: 'primary' },
   { icon: Clock, label: 'Duration', value: '~30-36 Continuous Hours', color: 'accent' },
-  { icon: Trophy, label: 'Prize Pool', value: '₹75,000', color: 'primary' },
+  { icon: Trophy, label: 'Prize Pool', value: '₹1,00,000', color: 'primary' },
   { icon: Users, label: 'Participant Benefits', value: '$50 Worth Memberships for All', color: 'accent' },
 ];
 

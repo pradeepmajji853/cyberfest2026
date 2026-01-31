@@ -12,7 +12,7 @@ interface ScheduleEvent {
 
 const day1Schedule: ScheduleEvent[] = [
   { time: '09:30 – 11:00', title: 'Registration & Welcome Kit Distribution', icon: Users, type: 'general' },
-  { time: '11:00 – 12:00', title: 'Inaugural Ceremony & Chief Guest Address', icon: Award, type: 'general' },
+  { time: '11:00 – 12:00', title: 'Inaugural Ceremony & Chief Guest Addressing', icon: Award, type: 'general' },
   { time: '12:00 – 01:00', title: 'Lunch Break', icon: Utensils, type: 'break' },
   { time: '01:00 – 03:00', title: 'Expert Panel Talks', icon: Users, type: 'general' },
   { time: '03:00 – 04:00', title: 'Rules & Ethics Briefing', icon: Flag, type: 'general' },

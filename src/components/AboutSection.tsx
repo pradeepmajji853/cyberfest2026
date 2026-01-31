@@ -5,7 +5,7 @@ import { Shield, Clock, Trophy, Award } from 'lucide-react';
 
 const stats = [
   { icon: Clock, value: '36', label: 'Hours Non-Stop', color: 'text-primary' },
-  { icon: Trophy, value: '75,000', label: 'Prize Pool', color: 'text-secondary' },
+  { icon: Trophy, value: '1,00,000', label: 'Prize Pool', color: 'text-primary' },
   { icon: Award, value: '2', label: 'Parallel Tracks', color: 'text-accent' },
   { icon: Shield, value: 'National', label: 'Level Event', color: 'text-primary' },
 ];

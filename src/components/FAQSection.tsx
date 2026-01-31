@@ -32,7 +32,7 @@ const faqs = [
   },
   {
     question: 'What is the prize pool?',
-    answer: 'The total prize pool for CyberFest 2026 is ₹75,000, distributed across winners and runners-up of both Hackathon and CTF tracks.',
+    answer: 'The total prize pool for CyberFest 2026 is ₹1,00,000, distributed across winners and runners-up of both Hackathon and CTF tracks.',
   },
   {
     question: 'What should I bring to the event?',

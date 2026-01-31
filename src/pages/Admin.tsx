@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Download, Search, Users, Calendar, LogOut } from 'lucide-react';
+import { RefreshCw, Download, Search, Users, Calendar, LogOut, Mail, CheckCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
 
 interface TeamMember {
@@ -38,6 +39,10 @@ interface Registration {
   paymentScreenshot: string;
   paymentScreenshotName: string;
   timestamp: string;
+  confirmationSent?: boolean;
+  confirmedAt?: string;
+  isValid?: boolean;
+  rejectedAt?: string;
 }
 
 const Admin = () => {
@@ -202,6 +207,125 @@ const Admin = () => {
     return filteredRegistrations.reduce((sum, reg) => sum + reg.teamMembers.length, 0);
   };
 
+  const getConfirmedCount = () => {
+    return filteredRegistrations.filter(reg => reg.confirmationSent && reg.isValid !== false).length;
+  };
+
+  const getRejectedCount = () => {
+    return filteredRegistrations.filter(reg => reg.isValid === false).length;
+  };
+
+  const getRegistrationTimeline = () => {
+    // Group registrations by date
+    const groupedByDate = registrations.reduce((acc, reg) => {
+      const date = new Date(reg.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (!acc[date]) {
+        acc[date] = { date, total: 0, hackathon: 0, ctf: 0 };
+      }
+      acc[date].total++;
+      if (reg.eventType === 'hackathon') {
+        acc[date].hackathon++;
+      } else {
+        acc[date].ctf++;
+      }
+      return acc;
+    }, {} as Record<string, { date: string; total: number; hackathon: number; ctf: number }>);
+
+    // Convert to array and sort by date
+    return Object.values(groupedByDate).sort((a, b) => {
+      const dateA = new Date(a.date + ', 2026');
+      const dateB = new Date(b.date + ', 2026');
+      return dateA.getTime() - dateB.getTime();
+    });
+  };
+
+  const sendConfirmationEmail = async (registration: Registration) => {
+    if (registration.isValid === false) {
+      alert('Cannot send confirmation to a rejected registration.');
+      return;
+    }
+
+    const resend = registration.confirmationSent;
+    const confirmMessage = resend
+      ? `Resend confirmation email to ${registration.teamName}?\n\nTeam Leader: ${registration.teamMembers[0]?.name}\nEmail: ${registration.teamMembers[0]?.email}`
+      : `Send confirmation email to ${registration.teamName}?\n\nTeam Leader: ${registration.teamMembers[0]?.name}\nEmail: ${registration.teamMembers[0]?.email}`;
+
+    const confirm = window.confirm(confirmMessage);
+
+    if (!confirm) return;
+
+    try {
+      // Prepare email content
+      const teamLeader = registration.teamMembers[0];
+      const subject = `Registration Confirmed - CyberFest 2026 ${registration.eventType.toUpperCase()}`;
+      const body = `Dear ${teamLeader.name},\n\nYour registration for CyberFest 2026 ${registration.eventType.toUpperCase()} has been confirmed!\n\nTeam Details:\n- Team Name: ${registration.teamName}\n- Team Size: ${registration.teamSize}\n- Event Type: ${registration.eventType.toUpperCase()}\n- Transaction ID: ${registration.transactionId}\n\nTeam Members:\n${registration.teamMembers.map((m, i) => `${i + 1}. ${m.name} (${m.email})`).join('\n')}\n\nLooking forward to seeing you at the event!\n\nBest regards,\nCyberFest 2026 Team`;
+
+      // Copy email content to clipboard
+      const emailContent = `To: ${teamLeader.email}\nSubject: ${subject}\n\n${body}`;
+      await navigator.clipboard.writeText(emailContent);
+
+      // Try to open email client (may not work in all browsers)
+      const mailtoLink = `mailto:${teamLeader.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+
+      // Mark as confirmed in Firestore
+      await updateDoc(doc(db, 'registrations', registration.id), {
+        confirmationSent: true,
+        confirmedAt: new Date().toISOString(),
+        isValid: true,
+      });
+
+      // Update local state
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === registration.id
+            ? { ...reg, confirmationSent: true, confirmedAt: new Date().toISOString(), isValid: true }
+            : reg
+        )
+      );
+
+      alert(`Email content copied to clipboard!\n\n${resend ? 'Resent' : 'Sent'} to: ${teamLeader.email}\n\nPaste it in your email client and send.`);
+    } catch (error) {
+      console.error('Error sending confirmation:', error);
+      alert('Failed to mark as confirmed. Check console for details.');
+    }
+  };
+
+  const markAsInvalid = async (registration: Registration) => {
+    if (registration.isValid === false) {
+      alert('This registration is already marked as invalid.');
+      return;
+    }
+
+    const reason = window.prompt(
+      `Mark "${registration.teamName}" as INVALID?\n\nThis will reject their registration.\n\nReason (optional):`,
+      'Payment verification failed'
+    );
+
+    if (reason === null) return; // User cancelled
+
+    try {
+      await updateDoc(doc(db, 'registrations', registration.id), {
+        isValid: false,
+        rejectedAt: new Date().toISOString(),
+        confirmationSent: false,
+      });
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === registration.id
+            ? { ...reg, isValid: false, rejectedAt: new Date().toISOString(), confirmationSent: false }
+            : reg
+        )
+      );
+
+      alert(`Registration marked as INVALID${reason ? `: ${reason}` : ''}`);
+    } catch (error) {
+      console.error('Error marking as invalid:', error);
+      alert('Failed to mark as invalid. Check Firebase rules.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -224,7 +348,7 @@ const Admin = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
           <Card className="bg-gray-800/50 border-purple-500/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-400">Total Registrations</CardTitle>
@@ -273,7 +397,82 @@ const Admin = () => {
               <div className="text-2xl font-bold text-yellow-400">₹{getTotalRevenue().toLocaleString()}</div>
             </CardContent>
           </Card>
+          
+          <Card className="bg-gray-800/50 border-purple-500/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Confirmed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-400">{getConfirmedCount()}</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gray-800/50 border-purple-500/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Rejected</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-400">{getRejectedCount()}</div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Registration Timeline Chart */}
+        {registrations.length > 0 && (
+          <Card className="bg-gray-800/50 border-purple-500/20 mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg font-medium text-white">Registration Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={getRegistrationTimeline()}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#9CA3AF"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis 
+                    stroke="#9CA3AF"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1F2937', 
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                  />
+                  <Legend 
+                    wrapperStyle={{ color: '#9CA3AF' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="total" 
+                    stroke="#A78BFA" 
+                    strokeWidth={2}
+                    name="Total Registrations"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="hackathon" 
+                    stroke="#60A5FA" 
+                    strokeWidth={2}
+                    name="Hackathon"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="ctf" 
+                    stroke="#34D399" 
+                    strokeWidth={2}
+                    name="CTF"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Controls */}
         <Card className="bg-gray-800/50 border-purple-500/20 mb-6">
@@ -362,6 +561,17 @@ const Admin = () => {
                         <Badge variant="outline" className="text-yellow-400 border-yellow-400/50">
                           ₹{registration.price}
                         </Badge>
+                        {registration.isValid === false && (
+                          <Badge variant="outline" className="text-red-400 border-red-400/50">
+                            ✕ Rejected
+                          </Badge>
+                        )}
+                        {registration.confirmationSent && registration.isValid !== false && (
+                          <Badge variant="outline" className="text-green-400 border-green-400/50">
+                            <CheckCircle className="mr-1 h-3 w-3" />
+                            Confirmed
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -403,6 +613,33 @@ const Admin = () => {
                         className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
                       >
                         View Payment
+                      </Button>
+                      <Button
+                        onClick={() => sendConfirmationEmail(registration)}
+                        variant="outline"
+                        size="sm"
+                        disabled={registration.isValid === false}
+                        className={registration.isValid === false
+                          ? "border-gray-500/50 text-gray-500 opacity-50 cursor-not-allowed"
+                          : registration.confirmationSent
+                          ? "border-green-500/50 text-green-400 hover:bg-green-500/10" 
+                          : "border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                        }
+                      >
+                        <Mail className="mr-2 h-4 w-4" />
+                        {registration.confirmationSent ? 'Resend Email' : 'Send Confirmation'}
+                      </Button>
+                      <Button
+                        onClick={() => markAsInvalid(registration)}
+                        variant="outline"
+                        size="sm"
+                        disabled={registration.isValid === false}
+                        className={registration.isValid === false
+                          ? "border-red-500/50 text-red-400 opacity-50 cursor-not-allowed"
+                          : "border-red-500/50 text-red-400 hover:bg-red-500/10"
+                        }
+                      >
+                        {registration.isValid === false ? 'Marked Invalid' : 'Mark as Invalid'}
                       </Button>
                     </div>
                   </div>
