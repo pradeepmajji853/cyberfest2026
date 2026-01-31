@@ -117,6 +117,57 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
     );
   };
 
+  const compressImage = async (file: File, maxSizeKB: number = 400): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions to reduce file size
+          const maxDimension = 1200;
+          if (width > height && width > maxDimension) {
+            height = (height * maxDimension) / width;
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = (width * maxDimension) / height;
+            height = maxDimension;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'));
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Start with quality 0.8 and reduce if needed
+          let quality = 0.8;
+          let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+
+          // Keep reducing quality until size is under limit
+          while (compressedDataUrl.length > maxSizeKB * 1024 * 1.37 && quality > 0.1) {
+            quality -= 0.1;
+            compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+    });
+  };
+
   const handleSubmit = async () => {
     if (!paymentScreenshot || !transactionId) {
       alert('Please upload payment screenshot and enter transaction ID');
@@ -125,13 +176,16 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
 
     setIsSubmitting(true);
     try {
-      // Convert image to base64
-      const base64Image = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(paymentScreenshot);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-      });
+      // Compress and convert image to base64
+      const base64Image = await compressImage(paymentScreenshot, 400);
+
+      // Check final size (base64 adds ~37% overhead)
+      const sizeInKB = (base64Image.length * 0.75) / 1024;
+      if (sizeInKB > 500) {
+        alert('Image is too large even after compression. Please compress your image using https://imagecompressor.com/ and try again.');
+        setIsSubmitting(false);
+        return;
+      }
 
       // Save to Firestore
       await addDoc(collection(db, 'registrations'), {

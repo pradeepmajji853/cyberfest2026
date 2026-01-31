@@ -198,6 +198,10 @@ const Admin = () => {
     return filteredRegistrations.reduce((sum, reg) => sum + reg.price, 0);
   };
 
+  const getTotalParticipants = () => {
+    return filteredRegistrations.reduce((sum, reg) => sum + reg.teamMembers.length, 0);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -220,13 +224,22 @@ const Admin = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <Card className="bg-gray-800/50 border-purple-500/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-400">Total Registrations</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{filteredRegistrations.length}</div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gray-800/50 border-purple-500/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Total Participants</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-400">{getTotalParticipants()}</div>
             </CardContent>
           </Card>
           
