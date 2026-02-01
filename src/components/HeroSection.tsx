@@ -9,6 +9,7 @@ import DataFlowLine from '@/components/DataFlowLine';
 
 interface HeroSectionProps {
   onRegisterClick?: () => void;
+  registrationsClosed?: boolean;
 }
 
 const scrollToSchedule = () => {
@@ -18,7 +19,7 @@ const scrollToSchedule = () => {
   }
 };
 
-const HeroSection = ({ onRegisterClick }: HeroSectionProps) => {
+const HeroSection = ({ onRegisterClick, registrationsClosed = false }: HeroSectionProps) => {
   return (
     <section id="home" className="relative min-h-[100svh] flex items-center justify-center overflow-hidden py-10 sm:py-12 md:py-16">
       <div className="container mx-auto px-4 relative z-10">
@@ -130,8 +131,14 @@ const HeroSection = ({ onRegisterClick }: HeroSectionProps) => {
             transition={{ duration: 0.6, delay: 1.1 }}
             className="flex flex-col sm:flex-row gap-3 sm:gap-4"
           >
-            <Button variant="cyber" size="xl" className="pulse-glow" onClick={onRegisterClick}>
-              Register Now
+            <Button 
+              variant={registrationsClosed ? "outline" : "cyber"} 
+              size="xl" 
+              className={registrationsClosed ? "opacity-60 cursor-not-allowed" : "pulse-glow"}
+              onClick={onRegisterClick}
+              disabled={registrationsClosed}
+            >
+              {registrationsClosed ? 'Registrations Closed' : 'Register Now'}
             </Button>
             <Button variant="cyberOutline" size="xl" onClick={scrollToSchedule}>
               View Schedule

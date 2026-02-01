@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Download, Search, Users, Calendar, LogOut, Mail, CheckCircle } from 'lucide-react';
+import { RefreshCw, Download, Search, Users, Calendar, LogOut, Mail, CheckCircle, UserPlus, Edit } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -52,6 +52,7 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [eventFilter, setEventFilter] = useState<'all' | 'hackathon' | 'ctf'>('all');
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
+  const [editingTeam, setEditingTeam] = useState<Registration | null>(null);
   const [refreshCooldown, setRefreshCooldown] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null);
 
@@ -193,6 +194,134 @@ const Admin = () => {
     worksheet['!cols'] = colWidths;
     
     XLSX.writeFile(workbook, `CyberFest_Registrations_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const exportEmailsToCSV = (filterType: 'all' | 'non-rejected' | 'confirmed' | 'non-confirmed-non-rejected') => {
+    let dataToExport = filteredRegistrations;
+    
+    if (filterType === 'non-rejected') {
+      dataToExport = dataToExport.filter(reg => reg.isValid !== false);
+    } else if (filterType === 'confirmed') {
+      dataToExport = dataToExport.filter(reg => reg.confirmationSent && reg.isValid !== false);
+    } else if (filterType === 'non-confirmed-non-rejected') {
+      dataToExport = dataToExport.filter(reg => reg.isValid !== false && !reg.confirmationSent);
+    }
+
+    if (dataToExport.length === 0) {
+      alert('No data to export for selected filter');
+      return;
+    }
+
+    // Create CSV data with all team members
+    const csvData = dataToExport.flatMap(reg => 
+      reg.teamMembers.map(member => ({
+        Name: member.name,
+        Email: member.email,
+        'Team Name': reg.teamName,
+        'Event Type': reg.eventType.toUpperCase(),
+      }))
+    );
+
+    // Convert to CSV
+    const headers = Object.keys(csvData[0]).join(',');
+    const rows = csvData.map(row => Object.values(row).join(','));
+    const csv = [headers, ...rows].join('\n');
+
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CyberFest_Emails_${filterType}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const bulkConfirmNonRejected = async () => {
+    const nonRejected = filteredRegistrations.filter(reg => reg.isValid !== false && !reg.confirmationSent);
+    
+    if (nonRejected.length === 0) {
+      alert('No unconfirmed registrations to mark as confirmed');
+      return;
+    }
+
+    const confirm = window.confirm(
+      `Mark ${nonRejected.length} non-rejected registrations as CONFIRMED?\n\nThis should be done AFTER sending emails via Python script.`
+    );
+
+    if (!confirm) return;
+
+    try {
+      // Update all non-rejected registrations
+      const updatePromises = nonRejected.map(reg =>
+        updateDoc(doc(db, 'registrations', reg.id), {
+          confirmationSent: true,
+          confirmedAt: new Date().toISOString(),
+          isValid: true,
+        })
+      );
+
+      await Promise.all(updatePromises);
+
+      // Update local state
+      setRegistrations(prev =>
+        prev.map(reg =>
+          nonRejected.find(nr => nr.id === reg.id)
+            ? { ...reg, confirmationSent: true, confirmedAt: new Date().toISOString(), isValid: true }
+            : reg
+        )
+      );
+
+      alert(`Successfully marked ${nonRejected.length} registrations as confirmed!`);
+    } catch (error) {
+      console.error('Error bulk confirming:', error);
+      alert('Failed to bulk confirm. Check console for details.');
+    }
+  };
+
+  const addTeamMember = async (registration: Registration) => {
+    if (registration.teamMembers.length >= 5) {
+      alert('Maximum 5 team members allowed');
+      return;
+    }
+
+    const newMember: TeamMember = {
+      name: '',
+      college: 'CBIT',
+      collegeType: 'CBIT',
+      customCollege: '',
+      degreeType: 'B.Tech',
+      customDegree: '',
+      degree: 'B.Tech',
+      yearOfStudy: '',
+      branch: '',
+      branchType: 'Listed',
+      customBranch: '',
+      rollNumber: '',
+      email: '',
+      phoneNumber: '',
+    };
+
+    try {
+      const updatedMembers = [...registration.teamMembers, newMember];
+      await updateDoc(doc(db, 'registrations', registration.id), {
+        teamMembers: updatedMembers,
+        teamSize: updatedMembers.length,
+      });
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === registration.id
+            ? { ...reg, teamMembers: updatedMembers, teamSize: updatedMembers.length }
+            : reg
+        )
+      );
+
+      alert('Team member added! Please fill in their details in Firebase Console or edit here.');
+    } catch (error) {
+      console.error('Error adding team member:', error);
+      alert('Failed to add team member. Check Firebase rules.');
+    }
   };
 
   const viewPaymentScreenshot = (registration: Registration) => {
@@ -337,6 +466,39 @@ const Admin = () => {
     } catch (error) {
       console.error('Error marking as invalid:', error);
       alert('Failed to mark as invalid. Check Firebase rules.');
+    }
+  };
+
+  const unconfirmRegistration = async (registration: Registration) => {
+    if (!registration.confirmationSent) {
+      alert('This registration is not confirmed yet.');
+      return;
+    }
+
+    const confirm = window.confirm(
+      `Unconfirm "${registration.teamName}"?\n\nThis will mark the registration as not confirmed, allowing you to send emails to them again.`
+    );
+
+    if (!confirm) return;
+
+    try {
+      await updateDoc(doc(db, 'registrations', registration.id), {
+        confirmationSent: false,
+        confirmedAt: null,
+      });
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === registration.id
+            ? { ...reg, confirmationSent: false, confirmedAt: undefined }
+            : reg
+        )
+      );
+
+      alert('Registration unconfirmed successfully!');
+    } catch (error) {
+      console.error('Error unconfirming:', error);
+      alert('Failed to unconfirm. Check Firebase rules.');
     }
   };
 
@@ -550,6 +712,29 @@ const Admin = () => {
                 <Download className="mr-2 h-4 w-4" />
                 Export to Excel
               </Button>
+
+              {/* CSV Export Dropdown */}
+              <Select onValueChange={(value: any) => exportEmailsToCSV(value)}>
+                <SelectTrigger className="w-[200px] bg-gray-900/50 border-gray-700 text-white">
+                  <SelectValue placeholder="Export Emails CSV" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Participants</SelectItem>
+                  <SelectItem value="non-rejected">Non-Rejected Only</SelectItem>
+                  <SelectItem value="confirmed">Confirmed Only</SelectItem>
+                  <SelectItem value="non-confirmed-non-rejected">Unconfirmed & Non-Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Bulk Confirm Button */}
+              <Button 
+                onClick={bulkConfirmNonRejected}
+                variant="outline"
+                className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Bulk Confirm
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -665,6 +850,27 @@ const Admin = () => {
                       >
                         {registration.isValid === false ? 'Marked Invalid' : 'Mark as Invalid'}
                       </Button>
+                      {registration.confirmationSent && (
+                        <Button
+                          onClick={() => unconfirmRegistration(registration)}
+                          variant="outline"
+                          size="sm"
+                          className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                        >
+                          Unconfirm
+                        </Button>
+                      )}
+                      {registration.teamMembers.length < 5 && (
+                        <Button
+                          onClick={() => addTeamMember(registration)}
+                          variant="outline"
+                          size="sm"
+                          className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+                        >
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Add Member
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

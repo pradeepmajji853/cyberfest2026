@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Users, Flag, ChevronRight, Upload, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import qrPayment from '@/assets/qrpayment.jpeg';
 
@@ -176,6 +176,27 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
 
     setIsSubmitting(true);
     try {
+      // Check participant limit before proceeding
+      const registrationsSnapshot = await getDocs(collection(db, 'registrations'));
+      const totalParticipants = registrationsSnapshot.docs.reduce((sum, doc) => {
+        const data = doc.data();
+        // Only count non-rejected registrations
+        if (data.isValid === false) return sum;
+        return sum + (data.teamMembers?.length || 0);
+      }, 0);
+
+      // Block registration only if current count is already at or above 450
+      if (totalParticipants >= 450) {
+        alert(
+          `Sorry, registrations are full! 🎉\n\n` +
+          `Current participants: ${totalParticipants}/450\n` +
+          `We've reached our capacity.\n\n` +
+          `Thank you for your interest in CyberFest 2026!`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       // Compress and convert image to base64
       const base64Image = await compressImage(paymentScreenshot, 400);
 
