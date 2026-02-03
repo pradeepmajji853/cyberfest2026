@@ -19,12 +19,21 @@ import Plasma from '@/components/Plasma';
 import { useIsMobile } from '@/hooks/use-mobile';
 import CommitteeSection from '@/components/CommitteeSection';
 
+// HARD CLOSE REGISTRATIONS - Set to true to close registrations
+const REGISTRATIONS_CLOSED = true;
+
 const Index = () => {
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
-  const [registrationsClosed, setRegistrationsClosed] = useState(false);
+  const [registrationsClosed, setRegistrationsClosed] = useState(REGISTRATIONS_CLOSED);
   const isMobile = useIsMobile();
 
   const checkRegistrationStatus = async () => {
+    // If hard-closed, always show as closed
+    if (REGISTRATIONS_CLOSED) {
+      setRegistrationsClosed(true);
+      return;
+    }
+
     try {
       const registrationsSnapshot = await getDocs(collection(db, 'registrations'));
       const totalParticipants = registrationsSnapshot.docs.reduce((sum, doc) => {
@@ -45,7 +54,7 @@ const Index = () => {
 
   const handleRegisterClick = () => {
     if (registrationsClosed) {
-      alert('Registrations are closed. Thank you for your interest in CyberFest 2026!');
+      alert('Registrations are now closed. Thank you for your interest in CyberFest 2026!');
       return;
     }
     setIsRegistrationOpen(true);

@@ -6,6 +6,9 @@ import { collection, addDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import qrPayment from '@/assets/qrpayment.jpeg';
 
+// HARD CLOSE REGISTRATIONS - Set to true to close registrations
+const REGISTRATIONS_CLOSED = true;
+
 interface RegistrationDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -180,6 +183,17 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
 
     setIsSubmitting(true);
     try {
+      // Check if registrations are hard-closed
+      if (REGISTRATIONS_CLOSED) {
+        alert(
+          `Registrations are now closed!\n\n` +
+          `Thank you for your interest in CyberFest 2026.\n\n` +
+          `We look forward to seeing you at the event!`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       // Check participant limit before proceeding
       const registrationsSnapshot = await getDocs(collection(db, 'registrations'));
       const totalParticipants = registrationsSnapshot.docs.reduce((sum, doc) => {
