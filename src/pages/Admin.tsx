@@ -53,6 +53,9 @@ const Admin = () => {
   const [eventFilter, setEventFilter] = useState<'all' | 'hackathon' | 'ctf'>('all');
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
   const [editingTeam, setEditingTeam] = useState<Registration | null>(null);
+  const [editingPayment, setEditingPayment] = useState<Registration | null>(null);
+  const [newTransactionId, setNewTransactionId] = useState('');
+  const [newPaymentScreenshot, setNewPaymentScreenshot] = useState<File | null>(null);
   const [refreshCooldown, setRefreshCooldown] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null);
 
@@ -502,6 +505,133 @@ const Admin = () => {
     }
   };
 
+  const markAsValid = async (registration: Registration) => {
+    if (registration.isValid !== false) {
+      alert('This registration is already valid.');
+      return;
+    }
+
+    const confirm = window.confirm(
+      `Mark "${registration.teamName}" as VALID?\n\nThis will restore their registration and make them eligible for confirmation emails.`
+    );
+
+    if (!confirm) return;
+
+    try {
+      await updateDoc(doc(db, 'registrations', registration.id), {
+        isValid: true,
+        rejectedAt: null,
+      });
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === registration.id
+            ? { ...reg, isValid: true, rejectedAt: undefined }
+            : reg
+        )
+      );
+
+      alert('Registration marked as VALID successfully!');
+    } catch (error) {
+      console.error('Error marking as valid:', error);
+      alert('Failed to mark as valid. Check Firebase rules.');
+    }
+  };
+
+  const openEditPayment = (registration: Registration) => {
+    setEditingPayment(registration);
+    setNewTransactionId(registration.transactionId);
+    setNewPaymentScreenshot(null);
+  };
+
+  const compressImage = async (file: File, maxSizeKB: number = 400): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxDimension = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height && width > maxDimension) {
+            height = (height * maxDimension) / width;
+            width = maxDimension;
+          } else if (height > maxDimension) {
+            width = (width * maxDimension) / height;
+            height = maxDimension;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('Failed to get canvas context'));
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let quality = 0.8;
+          let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+
+          while (compressedDataUrl.length > maxSizeKB * 1024 * 1.37 && quality > 0.1) {
+            quality -= 0.1;
+            compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          }
+
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+    });
+  };
+
+  const updatePaymentDetails = async () => {
+    if (!editingPayment) return;
+
+    if (!newTransactionId.trim()) {
+      alert('Transaction ID is required');
+      return;
+    }
+
+    try {
+      const updates: any = {
+        transactionId: newTransactionId,
+      };
+
+      if (newPaymentScreenshot) {
+        const base64Image = await compressImage(newPaymentScreenshot, 400);
+        const sizeInKB = (base64Image.length * 0.75) / 1024;
+        if (sizeInKB > 500) {
+          alert('Image is too large. Please use a smaller image.');
+          return;
+        }
+        updates.paymentScreenshot = base64Image;
+        updates.paymentScreenshotName = newPaymentScreenshot.name;
+      }
+
+      await updateDoc(doc(db, 'registrations', editingPayment.id), updates);
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === editingPayment.id
+            ? { ...reg, ...updates }
+            : reg
+        )
+      );
+
+      alert('Payment details updated successfully!');
+      setEditingPayment(null);
+      setNewTransactionId('');
+      setNewPaymentScreenshot(null);
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      alert('Failed to update payment details. Check console for details.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -850,6 +980,27 @@ const Admin = () => {
                       >
                         {registration.isValid === false ? 'Marked Invalid' : 'Mark as Invalid'}
                       </Button>
+                      {registration.isValid === false && (
+                        <>
+                          <Button
+                            onClick={() => markAsValid(registration)}
+                            variant="outline"
+                            size="sm"
+                            className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+                          >
+                            Mark as Valid
+                          </Button>
+                          <Button
+                            onClick={() => openEditPayment(registration)}
+                            variant="outline"
+                            size="sm"
+                            className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit Payment
+                          </Button>
+                        </>
+                      )}
                       {registration.confirmationSent && (
                         <Button
                           onClick={() => unconfirmRegistration(registration)}
@@ -890,6 +1041,67 @@ const Admin = () => {
           </Card>
         )}
       </div>
+
+      {/* Edit Payment Modal */}
+      {editingPayment && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setEditingPayment(null)}
+        >
+          <div 
+            className="bg-gray-900 border border-purple-500/50 rounded-lg p-6 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold mb-4 text-purple-400">Edit Payment Details</h3>
+            <p className="text-sm text-gray-400 mb-4">Team: {editingPayment.teamName}</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Transaction ID</label>
+                <Input
+                  value={newTransactionId}
+                  onChange={(e) => setNewTransactionId(e.target.value)}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  placeholder="Enter transaction ID"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Payment Screenshot (Optional)</label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setNewPaymentScreenshot(e.target.files?.[0] || null)}
+                  className="bg-gray-800 border-gray-700 text-white"
+                />
+                {newPaymentScreenshot && (
+                  <p className="text-xs text-green-400 mt-1">✓ New screenshot selected</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={updatePaymentDetails}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  Update Payment
+                </Button>
+                <Button
+                  onClick={() => {
+                    setEditingPayment(null);
+                    setNewTransactionId('');
+                    setNewPaymentScreenshot(null);
+                  }}
+                  variant="outline"
+                  className="flex-1 border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Screenshot Modal */}
       {selectedRegistration && (
