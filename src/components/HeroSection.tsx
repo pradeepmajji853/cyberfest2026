@@ -137,7 +137,7 @@ const HeroSection = ({ onRegisterClick, registrationsClosed = false }: HeroSecti
               className={registrationsClosed ? "opacity-80" : "pulse-glow"}
               onClick={onRegisterClick}
             >
-              {registrationsClosed ? 'Registrations Closed' : 'Register Now'}
+              {registrationsClosed ? 'Registrations Closed' : 'Register Now (CBIT Closed)'}
             </Button>
             <Button variant="cyberOutline" size="xl" onClick={scrollToSchedule}>
               View Schedule

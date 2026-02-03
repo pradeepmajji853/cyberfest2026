@@ -24,13 +24,7 @@ const Index = () => {
   const [registrationsClosed, setRegistrationsClosed] = useState(false);
   const isMobile = useIsMobile();
 
-  const REGISTRATIONS_CLOSED = true;
-
   const checkRegistrationStatus = async () => {
-    if (REGISTRATIONS_CLOSED) {
-      setRegistrationsClosed(true);
-      return;
-    }
     try {
       const registrationsSnapshot = await getDocs(collection(db, 'registrations'));
       const totalParticipants = registrationsSnapshot.docs.reduce((sum, doc) => {

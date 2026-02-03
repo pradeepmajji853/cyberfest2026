@@ -75,8 +75,8 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
       .fill(null)
       .map(() => ({
         name: '',
-        college: 'CBIT',
-        collegeType: 'CBIT',
+        college: '',
+        collegeType: 'Other',
         customCollege: '',
         degreeType: 'B.Tech',
         customDegree: '',
@@ -111,7 +111,7 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
         member.phoneNumber &&
         member.rollNumber &&
         member.yearOfStudy &&
-        (member.collegeType === 'CBIT' || member.customCollege) &&
+        (member.collegeType === 'Other' && member.customCollege) &&
         (member.degreeType !== 'Other' || member.customDegree) &&
         (member.branch && (member.branch !== 'Other' || member.customBranch))
     );
@@ -169,6 +169,10 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
   };
 
   const handleSubmit = async () => {
+    if (teamMembers.some((member) => member.collegeType === 'CBIT')) {
+      alert('Registrations are closed for CBIT students. Please select "Other" and enter your college name.');
+      return;
+    }
     if (!paymentScreenshot || !transactionId) {
       alert('Please upload payment screenshot and enter transaction ID');
       return;
@@ -763,6 +767,11 @@ const DetailsForm = ({
                 <option value="CBIT">CBIT</option>
                 <option value="Other">Other</option>
               </select>
+              {member.collegeType === 'CBIT' && (
+                <p className="mt-2 text-sm text-yellow-300">
+                  Registrations are closed for CBIT students. Please select Other.
+                </p>
+              )}
             </div>
 
             {/* Custom College */}
