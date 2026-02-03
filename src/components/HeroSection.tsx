@@ -129,19 +129,24 @@ const HeroSection = ({ onRegisterClick, registrationsClosed = false }: HeroSecti
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 1.1 }}
-            className="flex flex-col sm:flex-row gap-3 sm:gap-4"
+            className="flex flex-col gap-3 sm:gap-4"
           >
-            <Button 
-              variant={registrationsClosed ? "outline" : "cyber"} 
-              size="xl" 
-              className={registrationsClosed ? "opacity-80" : "pulse-glow"}
-              onClick={onRegisterClick}
-            >
-              {registrationsClosed ? 'Registrations Closed' : 'Register Now (CBIT Closed)'}
-            </Button>
-            <Button variant="cyberOutline" size="xl" onClick={scrollToSchedule}>
-              View Schedule
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <Button 
+                variant={registrationsClosed ? "outline" : "cyber"} 
+                size="xl" 
+                className={registrationsClosed ? "opacity-80" : "pulse-glow"}
+                onClick={onRegisterClick}
+              >
+                {registrationsClosed ? 'Registrations Closed' : 'Register Now'}
+              </Button>
+              <Button variant="cyberOutline" size="xl" onClick={scrollToSchedule}>
+                View Schedule
+              </Button>
+            </div>
+            <p className="text-xs sm:text-sm text-foreground/60">
+              Registrations for CBIT students are closed. Other colleges can register for the event.
+            </p>
           </motion.div>
 
           {/* Scroll Indicator */}
