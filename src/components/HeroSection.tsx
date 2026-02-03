@@ -134,9 +134,8 @@ const HeroSection = ({ onRegisterClick, registrationsClosed = false }: HeroSecti
             <Button 
               variant={registrationsClosed ? "outline" : "cyber"} 
               size="xl" 
-              className={registrationsClosed ? "opacity-60 cursor-not-allowed" : "pulse-glow"}
+              className={registrationsClosed ? "opacity-80" : "pulse-glow"}
               onClick={onRegisterClick}
-              disabled={registrationsClosed}
             >
               {registrationsClosed ? 'Registrations Closed' : 'Register Now'}
             </Button>

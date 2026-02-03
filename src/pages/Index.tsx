@@ -22,10 +22,15 @@ import CommitteeSection from '@/components/CommitteeSection';
 const Index = () => {
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
   const [registrationsClosed, setRegistrationsClosed] = useState(false);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const isMobile = useIsMobile();
 
+  const REGISTRATIONS_CLOSED = true;
+
   const checkRegistrationStatus = async () => {
+    if (REGISTRATIONS_CLOSED) {
+      setRegistrationsClosed(true);
+      return;
+    }
     try {
       const registrationsSnapshot = await getDocs(collection(db, 'registrations'));
       const totalParticipants = registrationsSnapshot.docs.reduce((sum, doc) => {
@@ -46,7 +51,7 @@ const Index = () => {
 
   const handleRegisterClick = () => {
     if (registrationsClosed) {
-      alert('Sorry, registrations are currently closed. We\'ve reached our capacity of 450 participants. Thank you for your interest in CyberFest 2026!');
+      alert('Registrations are closed. Thank you for your interest in CyberFest 2026!');
       return;
     }
     setIsRegistrationOpen(true);
