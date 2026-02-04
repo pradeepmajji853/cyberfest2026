@@ -5,7 +5,6 @@ import {
   collection,
   deleteField,
   doc,
-  getDoc,
   getDocs,
   runTransaction,
   serverTimestamp,
@@ -13,12 +12,12 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { createPasswordHash, generateSaltHex, normalizeTeamKey } from '@/lib/psAuth';
+import * as XLSX from 'xlsx';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 
 type TeamRow = {
   id: string;
@@ -53,8 +52,11 @@ const PsAdmin = () => {
   const [problemStatements, setProblemStatements] = useState<PsRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [seedLoading, setSeedLoading] = useState(false);
-  const [seedOutput, setSeedOutput] = useState('');
+  const [bulkTeamsLoading, setBulkTeamsLoading] = useState(false);
+  const [bulkTeamsOutput, setBulkTeamsOutput] = useState('');
+
+  const [bulkPsDocLoading, setBulkPsDocLoading] = useState(false);
+  const [bulkPsDocOutput, setBulkPsDocOutput] = useState('');
 
   useEffect(() => {
     const authToken = sessionStorage.getItem('admin_auth');
@@ -107,6 +109,43 @@ const PsAdmin = () => {
   useEffect(() => {
     refresh();
   }, []);
+
+  const extractString = (value: unknown): string => (typeof value === 'string' ? value : value == null ? '' : String(value));
+
+  const makePsIdFromTitle = (title: string): string => {
+    const base = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 60);
+    return base || `ps-${Date.now()}`;
+  };
+
+  const buildPsDescription = (input: {
+    difficulty?: string;
+    domain?: string;
+    problemContext?: string;
+    objective?: string;
+    deliverables?: string[];
+  }) => {
+    const top: string[] = [];
+    if (input.difficulty) top.push(`Difficulty: ${input.difficulty}`);
+    if (input.domain) top.push(`Domain: ${input.domain}`);
+
+    const parts: string[] = [];
+    if (top.length) parts.push(top.join(' • '));
+
+    if (input.problemContext) parts.push(['Problem Context', input.problemContext].join('\n'));
+    if (input.objective) parts.push(['Objective', input.objective].join('\n'));
+    if (input.deliverables?.length) {
+      parts.push(['Expected Deliverables', input.deliverables.map((d) => `- ${d}`).join('\n')].join('\n'));
+    }
+
+    const text = parts.join('\n\n').trim();
+    return text || null;
+  };
 
   const upsertTeam = async () => {
     const displayName = teamName.trim();
@@ -189,127 +228,363 @@ const PsAdmin = () => {
     }
   };
 
-  const seedDemoData = async () => {
-    const confirm = window.confirm(
-      'Seed demo data?\n\nThis will create sample problem statements and teams (only if they do not already exist).'
-    );
-    if (!confirm) return;
-
-    setSeedLoading(true);
-    setSeedOutput('');
+  const bulkUploadTeamsFromExcel = async (file: File) => {
+    setBulkTeamsLoading(true);
+    setBulkTeamsOutput('');
 
     try {
-      const demoPs = [
-        {
-          id: 'PS-01',
-          title: 'AI Phishing Detection for Campus Email',
-          track: 'Hackathon',
-          order: 1,
-          description: 'Build a lightweight classifier + UI to detect phishing patterns in emails and generate explainable warnings.',
-        },
-        {
-          id: 'PS-02',
-          title: 'Blockchain Transaction Risk Scoring',
-          track: 'Hackathon',
-          order: 2,
-          description: 'Create a risk scoring pipeline for wallets/transactions with heuristics and clear visualizations.',
-        },
-        {
-          id: 'PS-03',
-          title: 'Secure Passwordless Login Prototype',
-          track: 'Hackathon',
-          order: 3,
-          description: 'Prototype a WebAuthn-based login with threat model notes and basic auditing UI.',
-        },
-        {
-          id: 'PS-04',
-          title: 'SOC Alert Triage Assistant',
-          track: 'Hackathon',
-          order: 4,
-          description: 'Summarize and prioritize alerts; include rationale and playbook suggestions.',
-        },
-      ];
+      const buf = await file.arrayBuffer();
+      const workbook = XLSX.read(buf, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      if (!firstSheetName) {
+        alert('No sheets found in the Excel file.');
+        return;
+      }
 
-      const demoTeams = [
-        { displayName: 'Team ZeroDay' },
-        { displayName: 'Team ByteBandits' },
-        { displayName: 'Team CipherCats' },
-      ];
+      const sheet = workbook.Sheets[firstSheetName];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
+      if (!rows.length) {
+        alert('No rows found in the first sheet.');
+        return;
+      }
 
-      const created: string[] = [];
-      const skipped: string[] = [];
+      const keys = Object.keys(rows[0] ?? {});
+      const keyLowerMap = new Map(keys.map((k) => [k.toLowerCase().trim(), k] as const));
 
-      // Seed problem statements with stable IDs (idempotent)
-      for (const ps of demoPs) {
-        const psRef = doc(db, 'problemStatements', ps.id);
-        const existing = await getDoc(psRef);
-        if (existing.exists()) {
-          skipped.push(`PS exists: ${ps.id}`);
+      const pickCol = (candidates: string[]) => {
+        for (const cand of candidates) {
+          const found = keyLowerMap.get(cand);
+          if (found) return found;
+        }
+        return undefined;
+      };
+
+      const teamCol = pickCol(['team', 'team name', 'teamname', 'name']);
+      const passCol = pickCol(['password', 'pass', 'pwd']);
+      if (!teamCol || !passCol) {
+        alert(
+          `Missing required columns. Found: ${keys.join(', ')}\n\nNeed columns like: Team Name + Password.`
+        );
+        return;
+      }
+
+      const lines: string[] = [];
+      let success = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index];
+        const displayName = extractString(row[teamCol]).trim();
+        const password = extractString(row[passCol]);
+
+        if (!displayName || !password) {
+          skipped++;
+          lines.push(`- Row ${index + 2}: skipped (missing team/password)`);
           continue;
         }
 
-        await setDoc(psRef, {
-          title: ps.title,
-          track: ps.track,
-          order: ps.order,
-          description: ps.description,
-          createdAt: serverTimestamp(),
-          seeded: true,
-        });
-
-        created.push(`PS created: ${ps.id}`);
-      }
-
-      const credentials: Array<{ teamName: string; teamKey: string; password: string }> = [];
-
-      // Seed teams (only if not exists)
-      for (const team of demoTeams) {
-        const teamKey = normalizeTeamKey(team.displayName);
-        if (!teamKey) continue;
-
-        const teamRef = doc(db, 'psTeams', teamKey);
-        const existing = await getDoc(teamRef);
-        if (existing.exists()) {
-          skipped.push(`Team exists: ${team.displayName}`);
+        const key = normalizeTeamKey(displayName);
+        if (!key) {
+          skipped++;
+          lines.push(`- Row ${index + 2}: skipped (invalid team name: ${displayName})`);
           continue;
         }
 
-        const password = `CF26-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 6)}`;
-        const salt = generateSaltHex(16);
-        const passwordHash = await createPasswordHash(password, salt);
+        try {
+          const salt = generateSaltHex(16);
+          const passwordHash = await createPasswordHash(password, salt);
 
-        await setDoc(teamRef, {
-          displayName: team.displayName,
-          salt,
-          passwordHash,
-          createdAt: serverTimestamp(),
-          seeded: true,
-        });
-
-        created.push(`Team created: ${team.displayName}`);
-        credentials.push({ teamName: team.displayName, teamKey, password });
+          await setDoc(
+            doc(db, 'psTeams', key),
+            {
+              displayName,
+              salt,
+              passwordHash,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+          success++;
+        } catch (e) {
+          failed++;
+          console.error('Bulk team upload row error:', e);
+          lines.push(`- Row ${index + 2}: failed (${displayName})`);
+        }
       }
 
-      const outputLines = [
-        'Seed complete.',
-        '',
-        created.length ? 'Created:' : 'Created: (none)',
-        ...created.map((x) => `- ${x}`),
-        '',
-        skipped.length ? 'Skipped:' : 'Skipped: (none)',
-        ...skipped.map((x) => `- ${x}`),
-        '',
-        credentials.length ? 'Team credentials (for testing login):' : 'Team credentials: (none created)',
-        ...credentials.map((c) => `- ${c.teamName}  |  key=${c.teamKey}  |  password=${c.password}`),
-      ];
+      setBulkTeamsOutput([
+        `Bulk upload complete: ${success} saved, ${skipped} skipped, ${failed} failed.`,
+        ...lines,
+      ].join('\n'));
 
-      setSeedOutput(outputLines.join('\n'));
       await refresh();
-    } catch (e) {
-      console.error('Seed error:', e);
-      alert('Failed to seed demo data. Check Firestore rules and console.');
     } finally {
-      setSeedLoading(false);
+      setBulkTeamsLoading(false);
+    }
+  };
+
+  const bulkUploadProblemStatementsFromDocx = async (file: File) => {
+    setBulkPsDocLoading(true);
+    setBulkPsDocOutput('');
+
+    try {
+      const buf = await file.arrayBuffer();
+      const mammoth = await import('mammoth/mammoth.browser');
+      const { value } = await mammoth.extractRawText({ arrayBuffer: buf });
+      const raw = (value ?? '').replace(/\r\n/g, '\n').trim();
+
+      if (!raw) {
+        alert('No text could be extracted from the DOCX.');
+        return;
+      }
+
+      type ParsedPs = {
+        psNumber?: string;
+        title: string;
+        difficulty?: string;
+        domain?: string;
+        problemContext?: string;
+        objective?: string;
+        deliverables?: string[];
+        track?: string;
+        order?: number;
+      };
+
+      const parseStructuredDomainDoc = (text: string): ParsedPs[] => {
+        const lines = text.split('\n').map((l) => l.trim());
+        const result: ParsedPs[] = [];
+
+        let currentTrack: string | undefined;
+        let current: ParsedPs | null = null;
+        let currentSection: 'context' | 'objective' | 'deliverables' | null = null;
+
+        const flush = () => {
+          if (!current) return;
+          const title = current.title?.trim();
+          if (!title) {
+            current = null;
+            currentSection = null;
+            return;
+          }
+          current.problemContext = current.problemContext?.trim() || undefined;
+          current.objective = current.objective?.trim() || undefined;
+          current.deliverables = (current.deliverables ?? []).map((d) => d.trim()).filter(Boolean);
+          if (!current.deliverables.length) current.deliverables = undefined;
+          result.push(current);
+          current = null;
+          currentSection = null;
+        };
+
+        const sectionName = (l: string) => l.toLowerCase().replace(/\s+/g, ' ').trim();
+
+        for (const line of lines) {
+          if (!line) continue;
+
+          const domMatch = line.match(/^domain\s*\d+\s*:\s*(.+)$/i);
+          if (domMatch) {
+            flush();
+            currentTrack = domMatch[1].trim();
+            continue;
+          }
+
+          const psMatch = line.match(/^ps\s*(\d+\.\d+)\s+(.+)$/i);
+          if (psMatch) {
+            flush();
+            const psNumber = psMatch[1];
+            const title = psMatch[2].trim();
+            const m = psNumber.match(/^(\d+)\.(\d+)$/);
+            const order = m ? Number(m[1]) * 100 + Number(m[2]) : undefined;
+            current = {
+              psNumber,
+              title,
+              track: currentTrack,
+              order,
+              deliverables: [],
+            };
+            currentSection = null;
+            continue;
+          }
+
+          if (!current) continue;
+
+          const kv = line.match(/^([A-Za-z][A-Za-z\s]+)\s*:\s*(.+)$/);
+          if (kv) {
+            const key = kv[1].toLowerCase().trim();
+            const val = kv[2].trim();
+
+            if (key === 'difficulty') {
+              current.difficulty = val;
+              currentSection = null;
+              continue;
+            }
+            if (key === 'domain') {
+              current.domain = val;
+              currentSection = null;
+              continue;
+            }
+          }
+
+          const sec = sectionName(line);
+          if (sec === 'problem context') {
+            currentSection = 'context';
+            current.problemContext = current.problemContext ?? '';
+            continue;
+          }
+          if (sec === 'objective') {
+            currentSection = 'objective';
+            current.objective = current.objective ?? '';
+            continue;
+          }
+          if (sec === 'expected deliverables') {
+            currentSection = 'deliverables';
+            current.deliverables = current.deliverables ?? [];
+            continue;
+          }
+
+          if (currentSection === 'context') {
+            current.problemContext = `${current.problemContext ?? ''}${current.problemContext ? '\n' : ''}${line}`;
+            continue;
+          }
+          if (currentSection === 'objective') {
+            current.objective = `${current.objective ?? ''}${current.objective ? '\n' : ''}${line}`;
+            continue;
+          }
+          if (currentSection === 'deliverables') {
+            current.deliverables = current.deliverables ?? [];
+            current.deliverables.push(line.replace(/^[-•]\s*/, '').trim());
+            continue;
+          }
+        }
+
+        flush();
+        return result;
+      };
+
+      const parsedStructured = parseStructuredDomainDoc(raw);
+
+      // Fallback: simple “blank line separates items” parsing.
+      const parseFallback = (text: string): Array<{ title: string; description: string | null; order?: number }> => {
+        const blocks = text
+          .split(/\n\s*\n+/g)
+          .map((b) => b.trim())
+          .filter(Boolean);
+
+        const out: Array<{ title: string; description: string | null; order?: number }> = [];
+        for (const block of blocks) {
+          const lines = block
+            .split('\n')
+            .map((l) => l.trim())
+            .filter(Boolean);
+          if (!lines.length) continue;
+
+          const first = lines[0] ?? '';
+          const m = first.match(/^\s*(\d{1,3})[\).\-\s]+(.+)$/);
+          const order = m ? Number(m[1]) : undefined;
+          const titleRaw = (m ? m[2] : first).replace(/^title\s*:\s*/i, '').trim();
+          const title = titleRaw;
+          if (!title) continue;
+
+          const desc = lines.slice(1).join('\n').trim();
+          out.push({ title, description: desc ? desc : null, order });
+        }
+        return out;
+      };
+
+      const fallback = parsedStructured.length ? null : parseFallback(raw);
+
+      const toUpload: Array<{
+        docId: string;
+        title: string;
+        description: string | null;
+        track: string;
+        order: number | null;
+        extra?: Record<string, unknown>;
+      }> = [];
+
+      if (parsedStructured.length) {
+        for (const ps of parsedStructured) {
+          const docId = ps.psNumber ? `PS-${ps.psNumber}` : makePsIdFromTitle(ps.title);
+          const description = buildPsDescription({
+            difficulty: ps.difficulty,
+            domain: ps.domain,
+            problemContext: ps.problemContext,
+            objective: ps.objective,
+            deliverables: ps.deliverables,
+          });
+          toUpload.push({
+            docId,
+            title: ps.title,
+            description,
+            track: ps.track ?? 'Hackathon',
+            order: typeof ps.order === 'number' ? ps.order : null,
+            extra: {
+              psNumber: ps.psNumber ?? null,
+              difficulty: ps.difficulty ?? null,
+              domain: ps.domain ?? null,
+              problemContext: ps.problemContext ?? null,
+              objective: ps.objective ?? null,
+              expectedDeliverables: ps.deliverables ?? null,
+            },
+          });
+        }
+      } else {
+        for (let index = 0; index < (fallback?.length ?? 0); index++) {
+          const ps = fallback![index];
+          const inferredOrder = ps.order ?? index + 1;
+          const psId = makePsIdFromTitle(ps.title);
+          toUpload.push({
+            docId: psId,
+            title: ps.title,
+            description: ps.description,
+            track: 'Hackathon',
+            order: inferredOrder,
+          });
+        }
+      }
+
+      if (!toUpload.length) {
+        alert('Could not parse any problem statements from the DOCX.');
+        return;
+      }
+
+      const ok = window.confirm(`Upload ${toUpload.length} problem statements from this DOCX into Firestore?`);
+      if (!ok) return;
+
+      let success = 0;
+      let failed = 0;
+      const failures: string[] = [];
+
+      for (let index = 0; index < toUpload.length; index++) {
+        const ps = toUpload[index];
+        try {
+          await setDoc(
+            doc(db, 'problemStatements', ps.docId),
+            {
+              title: ps.title,
+              description: ps.description,
+              track: ps.track,
+              order: ps.order,
+              updatedAt: serverTimestamp(),
+              createdAt: serverTimestamp(),
+              ...(ps.extra ?? {}),
+            } as any,
+            { merge: true }
+          );
+          success++;
+        } catch (e) {
+          failed++;
+          console.error('Bulk PS upload error:', e);
+          failures.push(`- ${ps.title} (id=${ps.docId})`);
+        }
+      }
+
+      setBulkPsDocOutput(
+        [`Bulk PS upload complete: ${success} saved, ${failed} failed.`, ...failures].join('\n')
+      );
+      await refresh();
+    } finally {
+      setBulkPsDocLoading(false);
     }
   };
 
@@ -407,6 +682,36 @@ const PsAdmin = () => {
 
           <Card className="bg-gray-800/50 border-purple-500/20">
             <CardHeader>
+              <CardTitle className="text-white">Bulk Upload Team Credentials (Excel)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-gray-300">
+                Upload an Excel sheet with columns like <span className="font-semibold">Team Name</span> and <span className="font-semibold">Password</span>.
+              </div>
+              <Input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="bg-gray-900/50 border-gray-700 text-white"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  void bulkUploadTeamsFromExcel(file);
+                  e.currentTarget.value = '';
+                }}
+                disabled={bulkTeamsLoading}
+              />
+              <div className="text-xs text-gray-400">Passwords are hashed + salted before saving.</div>
+              {bulkTeamsOutput ? (
+                <pre className="whitespace-pre-wrap text-xs bg-gray-900/50 border border-gray-700 rounded-md p-3 text-gray-200 max-h-56 overflow-auto">{bulkTeamsOutput}</pre>
+              ) : null}
+              <Button className="w-full" variant="secondary" disabled>
+                {bulkTeamsLoading ? 'Uploading…' : 'Select a file above to upload'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800/50 border-purple-500/20">
+            <CardHeader>
               <CardTitle className="text-white">Add Problem Statement</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -434,33 +739,30 @@ const PsAdmin = () => {
 
           <Card className="bg-gray-800/50 border-purple-500/20">
             <CardHeader>
-              <CardTitle className="text-white">Seed Demo Data</CardTitle>
+              <CardTitle className="text-white">Bulk Upload Problem Statements (DOCX)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-sm text-gray-300">
-                Creates a few sample problem statements and teams (only if missing) so you can test the selection flow.
+                Upload a <span className="font-semibold">.docx</span> where each problem statement is separated by a blank line. The first line becomes the title; remaining lines become the description.
               </div>
-              <Button onClick={seedDemoData} disabled={seedLoading} className="w-full" variant="secondary">
-                {seedLoading ? 'Seeding…' : 'Seed Demo Data'}
-              </Button>
-              {seedOutput ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-white font-semibold">Output</div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(seedOutput);
-                        alert('Copied to clipboard');
-                      }}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                  <Textarea value={seedOutput} readOnly className="bg-gray-900/50 border-gray-700 text-white min-h-[180px]" />
-                </div>
+              <Input
+                type="file"
+                accept=".docx"
+                className="bg-gray-900/50 border-gray-700 text-white"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  void bulkUploadProblemStatementsFromDocx(file);
+                  e.currentTarget.value = '';
+                }}
+                disabled={bulkPsDocLoading}
+              />
+              {bulkPsDocOutput ? (
+                <pre className="whitespace-pre-wrap text-xs bg-gray-900/50 border border-gray-700 rounded-md p-3 text-gray-200 max-h-56 overflow-auto">{bulkPsDocOutput}</pre>
               ) : null}
+              <Button className="w-full" variant="secondary" disabled>
+                {bulkPsDocLoading ? 'Uploading…' : 'Select a DOCX above to upload'}
+              </Button>
             </CardContent>
           </Card>
         </div>
