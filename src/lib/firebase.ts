@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,10 +11,37 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
+const requiredKeys: Array<keyof typeof firebaseConfig> = [
+  'apiKey',
+  'authDomain',
+  'projectId',
+  'storageBucket',
+  'messagingSenderId',
+  'appId',
+];
+
+const missing = requiredKeys.filter((k) => !firebaseConfig[k]);
+if (missing.length) {
+  // This usually happens when `.env` wasn't loaded (dev server not restarted) or variables are named incorrectly.
+  // We throw early so Firestore doesn't fail with confusing "offline" errors.
+  throw new Error(
+    `Missing Firebase env vars: ${missing
+      .map((k) => `VITE_FIREBASE_${String(k).toUpperCase()}`)
+      .join(', ')}. Check your .env and restart the dev server.`
+  );
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // Initialize services
-export const db = getFirestore(app);
+const forceLongPolling = String(import.meta.env.VITE_FIREBASE_FORCE_LONG_POLLING ?? '') === 'true';
+
+export const db = forceLongPolling
+  ? initializeFirestore(app, {
+      // Helps in some campus networks / proxies where WebChannel/WebSocket gets blocked.
+      experimentalForceLongPolling: true,
+    })
+  : getFirestore(app);
 
 export default app;

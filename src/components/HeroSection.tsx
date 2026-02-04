@@ -145,7 +145,7 @@ const HeroSection = ({ onRegisterClick, registrationsClosed = false }: HeroSecti
               </Button>
             </div>
             <p className="text-xs sm:text-sm text-foreground/60">
-              Registrations for CBIT students are closed. Other colleges can register for the event.
+              Limited slots available — register early to confirm your participation.
             </p>
           </motion.div>
 

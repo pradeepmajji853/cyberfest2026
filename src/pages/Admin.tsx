@@ -104,6 +104,10 @@ const Admin = () => {
     navigate('/regdata');
   };
 
+  const goToPsAdmin = () => {
+    navigate('/regdata/ps');
+  };
+
   const fetchRegistrations = async () => {
     // Check if cooldown is active
     if (refreshCooldown > 0) {
@@ -643,14 +647,19 @@ const Admin = () => {
             </h1>
             <p className="text-gray-400">CyberFest 2026 - Admin Panel</p>
           </div>
-          <Button
-            onClick={handleLogout}
-            variant="outline"
-            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={goToPsAdmin} variant="secondary">
+              Problem Statements
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
