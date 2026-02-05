@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, addDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Download, Search, Users, Calendar, LogOut, Mail, CheckCircle, UserPlus, Edit } from 'lucide-react';
+import { RefreshCw, Download, Search, Users, Calendar, LogOut, Mail, CheckCircle, UserPlus, Edit, Upload, Trash2, Save, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import * as XLSX from 'xlsx';
+import { importCSVToFirebase } from '@/lib/csvImporter';
 
 interface TeamMember {
   name: string;
@@ -51,6 +52,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [eventFilter, setEventFilter] = useState<'all' | 'hackathon' | 'ctf'>('all');
+  const [duplicateFilter, setDuplicateFilter] = useState<'all' | 'duplicates' | 'unique'>('all');
   const [selectedRegistration, setSelectedRegistration] = useState<Registration | null>(null);
   const [editingTeam, setEditingTeam] = useState<Registration | null>(null);
   const [editingPayment, setEditingPayment] = useState<Registration | null>(null);
@@ -58,6 +60,11 @@ const Admin = () => {
   const [newPaymentScreenshot, setNewPaymentScreenshot] = useState<File | null>(null);
   const [refreshCooldown, setRefreshCooldown] = useState(0);
   const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null);
+  const [importingCSV, setImportingCSV] = useState(false);
+  const [editingMember, setEditingMember] = useState<{ regId: string; memberIndex: number; member: TeamMember } | null>(null);
+  const [addingMember, setAddingMember] = useState<{ regId: string; newMember: Partial<TeamMember> } | null>(null);
+  const [editingTeamDetails, setEditingTeamDetails] = useState<{ regId: string; teamName: string; eventType: 'hackathon' | 'ctf' } | null>(null);
+  const [importingJSON, setImportingJSON] = useState(false);
 
   const COOLDOWN_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -80,6 +87,7 @@ const Admin = () => {
         setRefreshCooldown(Math.ceil((COOLDOWN_DURATION - timeSinceLastRefresh) / 1000));
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   // Cooldown timer effect
@@ -136,10 +144,28 @@ const Admin = () => {
     }
   };
 
+  // Find duplicate transaction IDs
+  const getDuplicateTransactionIds = () => {
+    const txnIdCounts = registrations.reduce((acc, reg) => {
+      const txnId = reg.transactionId || '';
+      if (txnId && !txnId.startsWith('TEMP_')) {
+        acc[txnId] = (acc[txnId] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.keys(txnIdCounts).filter(id => txnIdCounts[id] > 1);
+  };
+
+  const duplicateTransactionIds = getDuplicateTransactionIds();
+  const hasDuplicates = (reg: Registration) => {
+    return duplicateTransactionIds.includes(reg.transactionId);
+  };
+
   const filteredRegistrations = registrations.filter(reg => {
     const matchesSearch = 
       (reg.teamName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (reg.transactionId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (reg.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (reg.teamMembers || []).some(member => 
         (member.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (member.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -148,7 +174,12 @@ const Admin = () => {
     
     const matchesFilter = eventFilter === 'all' || reg.eventType === eventFilter;
     
-    return matchesSearch && matchesFilter;
+    const matchesDuplicateFilter = 
+      duplicateFilter === 'all' ||
+      (duplicateFilter === 'duplicates' && hasDuplicates(reg)) ||
+      (duplicateFilter === 'unique' && !hasDuplicates(reg));
+    
+    return matchesSearch && matchesFilter && matchesDuplicateFilter;
   });
 
   const exportToExcel = () => {
@@ -282,48 +313,346 @@ const Admin = () => {
     }
   };
 
-  const addTeamMember = async (registration: Registration) => {
+  const addTeamMember = (registration: Registration) => {
     if (registration.teamMembers.length >= 5) {
       alert('Maximum 5 team members allowed');
       return;
     }
 
-    const newMember: TeamMember = {
-      name: '',
-      college: 'CBIT',
-      collegeType: 'CBIT',
-      customCollege: '',
-      degreeType: 'B.Tech',
-      customDegree: '',
-      degree: 'B.Tech',
-      yearOfStudy: '',
-      branch: '',
-      branchType: 'Listed',
-      customBranch: '',
-      rollNumber: '',
-      email: '',
-      phoneNumber: '',
-    };
+    // Open modal to add member with details
+    setAddingMember({
+      regId: registration.id,
+      newMember: {
+        name: '',
+        college: 'CBIT',
+        collegeType: 'CBIT',
+        customCollege: '',
+        degreeType: 'B.Tech',
+        customDegree: '',
+        degree: 'B.Tech',
+        yearOfStudy: '1st Year',
+        branch: 'CSE',
+        branchType: 'Listed',
+        customBranch: '',
+        rollNumber: '',
+        email: '',
+        phoneNumber: '',
+      }
+    });
+  };
+
+  const saveNewMember = async () => {
+    if (!addingMember) return;
+
+    const { regId, newMember } = addingMember;
+    
+    // Validate required fields
+    if (!newMember.name?.trim() || !newMember.email?.trim() || !newMember.phoneNumber?.trim()) {
+      alert('Please fill in all required fields: Name, Email, and Phone Number');
+      return;
+    }
+
+    const registration = registrations.find(r => r.id === regId);
+    if (!registration) return;
 
     try {
-      const updatedMembers = [...registration.teamMembers, newMember];
-      await updateDoc(doc(db, 'registrations', registration.id), {
+      const completeMember: TeamMember = {
+        name: newMember.name!,
+        email: newMember.email!,
+        phoneNumber: newMember.phoneNumber!,
+        college: newMember.college || 'CBIT',
+        collegeType: newMember.collegeType || 'CBIT',
+        customCollege: newMember.customCollege || '',
+        degreeType: newMember.degreeType || 'B.Tech',
+        customDegree: newMember.customDegree || '',
+        degree: newMember.degree || 'B.Tech',
+        yearOfStudy: newMember.yearOfStudy || '1st Year',
+        branch: newMember.branch || 'CSE',
+        branchType: newMember.branchType || 'Listed',
+        customBranch: newMember.customBranch || '',
+        rollNumber: newMember.rollNumber || '',
+      };
+
+      const updatedMembers = [...registration.teamMembers, completeMember];
+      await updateDoc(doc(db, 'registrations', regId), {
         teamMembers: updatedMembers,
         teamSize: updatedMembers.length,
       });
 
       setRegistrations(prev =>
         prev.map(reg =>
-          reg.id === registration.id
+          reg.id === regId
             ? { ...reg, teamMembers: updatedMembers, teamSize: updatedMembers.length }
             : reg
         )
       );
 
-      alert('Team member added! Please fill in their details in Firebase Console or edit here.');
+      setAddingMember(null);
+      alert('Team member added successfully!');
     } catch (error) {
       console.error('Error adding team member:', error);
       alert('Failed to add team member. Check Firebase rules.');
+    }
+  };
+
+  const openEditMember = (regId: string, memberIndex: number, member: TeamMember) => {
+    setEditingMember({ regId, memberIndex, member: { ...member } });
+  };
+
+  const saveMemberEdit = async () => {
+    if (!editingMember) return;
+
+    const { regId, memberIndex, member } = editingMember;
+    const registration = registrations.find(r => r.id === regId);
+    if (!registration) return;
+
+    // Validate required fields
+    if (!member.name?.trim() || !member.email?.trim() || !member.phoneNumber?.trim()) {
+      alert('Please fill in all required fields: Name, Email, and Phone Number');
+      return;
+    }
+
+    try {
+      const updatedMembers = [...registration.teamMembers];
+      updatedMembers[memberIndex] = member;
+
+      await updateDoc(doc(db, 'registrations', regId), {
+        teamMembers: updatedMembers,
+      });
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === regId
+            ? { ...reg, teamMembers: updatedMembers }
+            : reg
+        )
+      );
+
+      setEditingMember(null);
+      alert('Team member updated successfully!');
+    } catch (error) {
+      console.error('Error updating team member:', error);
+      alert('Failed to update team member. Check Firebase rules.');
+    }
+  };
+
+  const deleteTeamMember = async (regId: string, memberIndex: number) => {
+    const registration = registrations.find(r => r.id === regId);
+    if (!registration) return;
+
+    if (registration.teamMembers.length <= 1) {
+      alert('Cannot delete the only team member. Delete the entire registration instead.');
+      return;
+    }
+
+    const member = registration.teamMembers[memberIndex];
+    const confirm = window.confirm(
+      `Delete team member?\n\nName: ${member.name}\nEmail: ${member.email}\n\nThis action cannot be undone.`
+    );
+
+    if (!confirm) return;
+
+    try {
+      const updatedMembers = registration.teamMembers.filter((_, idx) => idx !== memberIndex);
+      await updateDoc(doc(db, 'registrations', regId), {
+        teamMembers: updatedMembers,
+        teamSize: updatedMembers.length,
+      });
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === regId
+            ? { ...reg, teamMembers: updatedMembers, teamSize: updatedMembers.length }
+            : reg
+        )
+      );
+
+      alert('Team member deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting team member:', error);
+      alert('Failed to delete team member. Check Firebase rules.');
+    }
+  };
+
+  const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      alert('Please select a CSV file');
+      return;
+    }
+
+    const confirmMsg = 
+      `Import registrations from "${file.name}"?\n\n` +
+      `This will:\n` +
+      `• Add new registrations to Firebase\n` +
+      `• Skip duplicates (same transaction ID)\n` +
+      `• Validate all team member data\n` +
+      `• Show detailed import results\n\n` +
+      `File size: ${(file.size / 1024).toFixed(2)} KB`;
+
+    const confirm = window.confirm(confirmMsg);
+
+    if (!confirm) {
+      event.target.value = '';
+      return;
+    }
+
+    setImportingCSV(true);
+
+    try {
+      const result = await importCSVToFirebase(file);
+      
+      let message = `Import Summary\n\n`;
+      message += `✓ Successfully imported: ${result.success}\n`;
+      message += `✗ Failed/Skipped: ${result.failed}\n`;
+      
+      if (result.errors.length > 0) {
+        message += `⚠ Issues: ${result.errors.length} (check console for details)\n\n`;
+        message += `First few issues:\n${result.errors.slice(0, 3).join('\n')}`;
+        if (result.errors.length > 3) {
+          message += `\n... and ${result.errors.length - 3} more`;
+        }
+      }
+      
+      alert(message);
+      
+      // Refresh registrations if any were imported
+      if (result.success > 0) {
+        await fetchRegistrations();
+      }
+    } catch (error) {
+      console.error('CSV import error:', error);
+      alert(`Failed to import CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setImportingCSV(false);
+      // Reset file input
+      event.target.value = '';
+    }
+  };
+
+  const handleJSONImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.json')) {
+      alert('Please select a JSON file');
+      return;
+    }
+
+    const confirm = window.confirm(
+      `Import registrations from "${file.name}"?\n\nThis will add all registrations from the JSON file to Firebase.`
+    );
+
+    if (!confirm) {
+      event.target.value = '';
+      return;
+    }
+
+    setImportingJSON(true);
+
+    try {
+      const text = await file.text();
+      const registrations = JSON.parse(text);
+
+      if (!Array.isArray(registrations)) {
+        throw new Error('JSON file must contain an array of registrations');
+      }
+
+      let success = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < registrations.length; i++) {
+        const reg = registrations[i];
+        try {
+          // Check for duplicates
+          const q = query(
+            collection(db, 'registrations'),
+            where('transactionId', '==', reg.transactionId)
+          );
+          const snapshot = await getDocs(q);
+
+          if (snapshot.empty) {
+            await addDoc(collection(db, 'registrations'), reg);
+            success++;
+            console.log(`✓ Imported: ${reg.teamName}`);
+          } else {
+            errors.push(`${reg.teamName} - Duplicate transaction ID`);
+            failed++;
+          }
+        } catch (error) {
+          failed++;
+          errors.push(`${reg.teamName} - ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
+      let message = `JSON Import Summary\n\n`;
+      message += `✓ Successfully imported: ${success}\n`;
+      message += `✗ Failed/Skipped: ${failed}\n`;
+      
+      if (errors.length > 0) {
+        message += `\nFirst few issues:\n${errors.slice(0, 3).join('\n')}`;
+        if (errors.length > 3) {
+          message += `\n... and ${errors.length - 3} more`;
+        }
+      }
+      
+      alert(message);
+      
+      if (success > 0) {
+        await fetchRegistrations();
+      }
+    } catch (error) {
+      console.error('JSON import error:', error);
+      alert(`Failed to import JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setImportingJSON(false);
+      event.target.value = '';
+    }
+  };
+
+  const openEditTeamDetails = (registration: Registration) => {
+    setEditingTeamDetails({
+      regId: registration.id,
+      teamName: registration.teamName,
+      eventType: registration.eventType,
+    });
+  };
+
+  const saveTeamDetails = async () => {
+    if (!editingTeamDetails) return;
+
+    const { regId, teamName, eventType } = editingTeamDetails;
+
+    if (!teamName.trim()) {
+      alert('Team name cannot be empty');
+      return;
+    }
+
+    const registration = registrations.find(r => r.id === regId);
+    if (!registration) return;
+
+    try {
+      await updateDoc(doc(db, 'registrations', regId), {
+        teamName: teamName.trim(),
+        eventType,
+      });
+
+      setRegistrations(prev =>
+        prev.map(reg =>
+          reg.id === regId
+            ? { ...reg, teamName: teamName.trim(), eventType }
+            : reg
+        )
+      );
+
+      setEditingTeamDetails(null);
+      alert('Team details updated successfully!');
+    } catch (error) {
+      console.error('Error updating team details:', error);
+      alert('Failed to update team details. Check Firebase rules.');
     }
   };
 
@@ -597,7 +926,7 @@ const Admin = () => {
     }
 
     try {
-      const updates: any = {
+      const updates: Record<string, string | undefined> = {
         transactionId: newTransactionId,
       };
 
@@ -793,78 +1122,141 @@ const Admin = () => {
         {/* Controls */}
         <Card className="bg-gray-800/50 border-purple-500/20 mb-6">
           <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              {/* Refresh Button */}
-              <Button 
-                onClick={fetchRegistrations}
-                disabled={loading || refreshCooldown > 0}
-                className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={refreshCooldown > 0 ? `Available in ${Math.floor(refreshCooldown / 60)}:${String(refreshCooldown % 60).padStart(2, '0')}` : 'Refresh data'}
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                {loading 
-                  ? 'Loading...' 
-                  : refreshCooldown > 0 
-                    ? `Wait ${Math.floor(refreshCooldown / 60)}:${String(refreshCooldown % 60).padStart(2, '0')}`
-                    : 'Refresh Data'}
-              </Button>
+            <div className="space-y-4">
+              {/* Row 1: Search and Refresh */}
+              <div className="flex flex-col md:flex-row gap-4">
+                {/* Search - Takes most space */}
+                <div className="flex-1 relative min-w-0">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by team name, email, phone, or transaction ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-gray-900/50 border-gray-700 text-white w-full"
+                  />
+                </div>
 
-              {/* Search */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Search by team name, email, phone, or transaction ID..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-gray-900/50 border-gray-700 text-white"
-                />
+                {/* Refresh Button */}
+                <Button 
+                  onClick={fetchRegistrations}
+                  disabled={loading || refreshCooldown > 0}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  title={refreshCooldown > 0 ? `Available in ${Math.floor(refreshCooldown / 60)}:${String(refreshCooldown % 60).padStart(2, '0')}` : 'Refresh data'}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  {loading 
+                    ? 'Loading...' 
+                    : refreshCooldown > 0 
+                      ? `Wait ${Math.floor(refreshCooldown / 60)}:${String(refreshCooldown % 60).padStart(2, '0')}`
+                      : 'Refresh Data'}
+                </Button>
               </div>
 
-              {/* Filter */}
-              <Select value={eventFilter} onValueChange={(value: any) => setEventFilter(value)}>
-                <SelectTrigger className="w-[180px] bg-gray-900/50 border-gray-700 text-white">
-                  <SelectValue placeholder="Filter by event" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Events</SelectItem>
-                  <SelectItem value="hackathon">Hackathon</SelectItem>
-                  <SelectItem value="ctf">CTF</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Row 2: Filters */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Event Filter */}
+                <Select value={eventFilter} onValueChange={(value) => setEventFilter(value as 'all' | 'hackathon' | 'ctf')}>
+                  <SelectTrigger className="w-full sm:w-[200px] bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Filter by event" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Events</SelectItem>
+                    <SelectItem value="hackathon">Hackathon</SelectItem>
+                    <SelectItem value="ctf">CTF</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              {/* Export Button */}
-              <Button 
-                onClick={exportToExcel}
-                variant="outline"
-                disabled={filteredRegistrations.length === 0}
-                className="border-green-500/50 text-green-400 hover:bg-green-500/10"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Export to Excel
-              </Button>
+                {/* Duplicate Filter */}
+                <Select value={duplicateFilter} onValueChange={(value) => setDuplicateFilter(value as 'all' | 'duplicates' | 'unique')}>
+                  <SelectTrigger className="w-full sm:w-[220px] bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Duplicates" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Registrations</SelectItem>
+                    <SelectItem value="duplicates">Duplicates Only ({duplicateTransactionIds.length > 0 ? registrations.filter(hasDuplicates).length : 0})</SelectItem>
+                    <SelectItem value="unique">Unique Only</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              {/* CSV Export Dropdown */}
-              <Select onValueChange={(value: any) => exportEmailsToCSV(value)}>
-                <SelectTrigger className="w-[200px] bg-gray-900/50 border-gray-700 text-white">
-                  <SelectValue placeholder="Export Emails CSV" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Participants</SelectItem>
-                  <SelectItem value="non-rejected">Non-Rejected Only</SelectItem>
-                  <SelectItem value="confirmed">Confirmed Only</SelectItem>
-                  <SelectItem value="non-confirmed-non-rejected">Unconfirmed & Non-Rejected</SelectItem>
-                </SelectContent>
-              </Select>
+                {/* CSV Export Dropdown */}
+                <Select onValueChange={(value) => exportEmailsToCSV(value as 'all' | 'non-rejected' | 'confirmed' | 'non-confirmed-non-rejected')}>
+                  <SelectTrigger className="w-full sm:w-[220px] bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Export Emails CSV" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Participants</SelectItem>
+                    <SelectItem value="non-rejected">Non-Rejected Only</SelectItem>
+                    <SelectItem value="confirmed">Confirmed Only</SelectItem>
+                    <SelectItem value="non-confirmed-non-rejected">Unconfirmed & Non-Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              {/* Bulk Confirm Button */}
-              <Button 
-                onClick={bulkConfirmNonRejected}
-                variant="outline"
-                className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Bulk Confirm
-              </Button>
+              {/* Row 3: Action Buttons */}
+              <div className="flex flex-wrap gap-3">
+                {/* Export Button */}
+                <Button 
+                  onClick={exportToExcel}
+                  variant="outline"
+                  disabled={filteredRegistrations.length === 0}
+                  className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Excel
+                </Button>
+
+                {/* CSV Import Button */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVImport}
+                    className="hidden"
+                    id="csv-import"
+                    disabled={importingCSV}
+                  />
+                  <Button
+                    onClick={() => document.getElementById('csv-import')?.click()}
+                    variant="outline"
+                    disabled={importingCSV}
+                    className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {importingCSV ? 'Importing...' : 'Import CSV'}
+                  </Button>
+                </div>
+
+                {/* JSON Import Button */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleJSONImport}
+                    className="hidden"
+                    id="json-import"
+                    disabled={importingJSON}
+                  />
+                  <Button
+                    onClick={() => document.getElementById('json-import')?.click()}
+                    variant="outline"
+                    disabled={importingJSON}
+                    className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {importingJSON ? 'Importing...' : 'Import JSON'}
+                  </Button>
+                </div>
+
+                {/* Bulk Confirm Button */}
+                <Button 
+                  onClick={bulkConfirmNonRejected}
+                  variant="outline"
+                  className="border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Bulk Confirm
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -894,12 +1286,26 @@ const Admin = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
                         <h3 className="text-xl font-bold">{registration.teamName}</h3>
+                        <Button
+                          onClick={() => openEditTeamDetails(registration)}
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-purple-600"
+                          title="Edit team name and event type"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
                         <Badge variant={registration.eventType === 'hackathon' ? 'default' : 'secondary'}>
                           {registration.eventType.toUpperCase()}
                         </Badge>
                         <Badge variant="outline" className="text-yellow-400 border-yellow-400/50">
                           ₹{registration.price}
                         </Badge>
+                        {hasDuplicates(registration) && (
+                          <Badge variant="outline" className="text-orange-400 border-orange-400/50">
+                            ⚠ Duplicate TXN ID
+                          </Badge>
+                        )}
                         {registration.isValid === false && (
                           <Badge variant="outline" className="text-red-400 border-red-400/50">
                             ✕ Rejected
@@ -925,10 +1331,31 @@ const Admin = () => {
                       </div>
 
                       <div className="mt-3 pt-3 border-t border-gray-700">
-                        <p className="text-xs text-gray-500 mb-2">Transaction ID: {registration.transactionId}</p>
+                        <div className="mb-3 bg-gray-900/70 p-2 rounded flex items-center justify-between">
+                          <div>
+                            <span className="text-xs text-gray-500">Transaction ID:</span>
+                            <p className="text-sm font-mono text-purple-300 mt-1">
+                              {registration.transactionId}
+                              {registration.transactionId?.startsWith('TEMP_') && (
+                                <span className="ml-2 text-xs text-red-400">(Missing - Update Required)</span>
+                              )}
+                            </p>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              navigator.clipboard.writeText(registration.transactionId);
+                              alert('Transaction ID copied!');
+                            }}
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                          >
+                            Copy
+                          </Button>
+                        </div>
                         <div className="space-y-2">
                           {registration.teamMembers.map((member, idx) => (
-                            <div key={idx} className="text-sm bg-gray-900/50 p-3 rounded-lg">
+                            <div key={idx} className="text-sm bg-gray-900/50 p-3 rounded-lg relative group">
                               <div className="font-semibold text-purple-400 mb-1">Member {idx + 1}: {member.name}</div>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs text-gray-400">
                                 <div>📧 {member.email}</div>
@@ -937,6 +1364,27 @@ const Admin = () => {
                                 <div>📚 {member.degreeType === 'Other' ? member.customDegree : member.degreeType} - Year {member.yearOfStudy}</div>
                                 <div>💼 {member.branch === 'Other' ? member.customBranch : member.branch}</div>
                                 <div>🆔 {member.rollNumber}</div>
+                              </div>
+                              {/* Edit and Delete buttons */}
+                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  onClick={() => openEditMember(registration.id, idx, member)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 bg-gray-800/80 hover:bg-blue-600"
+                                  title="Edit member"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  onClick={() => deleteTeamMember(registration.id, idx)}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 bg-gray-800/80 hover:bg-red-600"
+                                  title="Delete member"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
                               </div>
                             </div>
                           ))}
@@ -1144,6 +1592,489 @@ const Admin = () => {
                 <Download className="mr-2 h-4 w-4" />
                 Download Screenshot
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Member Modal */}
+      {editingMember && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setEditingMember(null)}
+        >
+          <div 
+            className="bg-gray-900 border border-purple-500/50 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-purple-400">Edit Team Member</h3>
+              <Button
+                onClick={() => setEditingMember(null)}
+                variant="ghost"
+                size="icon"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Full Name *</label>
+                  <Input
+                    value={editingMember.member.name}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, name: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="Enter full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email *</label>
+                  <Input
+                    type="email"
+                    value={editingMember.member.email}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, email: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="Enter email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone Number *</label>
+                  <Input
+                    value={editingMember.member.phoneNumber}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, phoneNumber: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="10-digit number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">College</label>
+                  <Select 
+                    value={editingMember.member.collegeType}
+                    onValueChange={(value) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, collegeType: value, college: value }
+                    })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CBIT">CBIT</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {editingMember.member.collegeType === 'Other' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">Custom College Name</label>
+                    <Input
+                      value={editingMember.member.customCollege}
+                      onChange={(e) => setEditingMember({
+                        ...editingMember,
+                        member: { ...editingMember.member, customCollege: e.target.value }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      placeholder="Enter college name"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Degree Type</label>
+                  <Select 
+                    value={editingMember.member.degreeType}
+                    onValueChange={(value) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, degreeType: value, degree: value }
+                    })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="B.Tech">B.Tech</SelectItem>
+                      <SelectItem value="B.E">B.E</SelectItem>
+                      <SelectItem value="M.Tech">M.Tech</SelectItem>
+                      <SelectItem value="MCA">MCA</SelectItem>
+                      <SelectItem value="BCA">BCA</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {editingMember.member.degreeType === 'Other' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Custom Degree</label>
+                    <Input
+                      value={editingMember.member.customDegree}
+                      onChange={(e) => setEditingMember({
+                        ...editingMember,
+                        member: { ...editingMember.member, customDegree: e.target.value }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      placeholder="Enter degree"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Year of Study</label>
+                  <Select 
+                    value={editingMember.member.yearOfStudy}
+                    onValueChange={(value) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, yearOfStudy: value }
+                    })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1st Year">1st Year</SelectItem>
+                      <SelectItem value="2nd Year">2nd Year</SelectItem>
+                      <SelectItem value="3rd Year">3rd Year</SelectItem>
+                      <SelectItem value="4th Year">4th Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Branch/Department</label>
+                  <Input
+                    value={editingMember.member.branch}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, branch: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="e.g., CSE, ECE, IT"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Roll Number / Registration Number</label>
+                  <Input
+                    value={editingMember.member.rollNumber}
+                    onChange={(e) => setEditingMember({
+                      ...editingMember,
+                      member: { ...editingMember.member, rollNumber: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="Enter roll/registration number"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-gray-700">
+                <Button
+                  onClick={saveMemberEdit}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </Button>
+                <Button
+                  onClick={() => setEditingMember(null)}
+                  variant="outline"
+                  className="flex-1 border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Member Modal */}
+      {addingMember && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setAddingMember(null)}
+        >
+          <div 
+            className="bg-gray-900 border border-purple-500/50 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-purple-400">Add New Team Member</h3>
+              <Button
+                onClick={() => setAddingMember(null)}
+                variant="ghost"
+                size="icon"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Full Name *</label>
+                  <Input
+                    value={addingMember.newMember.name || ''}
+                    onChange={(e) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, name: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="Enter full name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Email *</label>
+                  <Input
+                    type="email"
+                    value={addingMember.newMember.email || ''}
+                    onChange={(e) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, email: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="Enter email"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Phone Number *</label>
+                  <Input
+                    value={addingMember.newMember.phoneNumber || ''}
+                    onChange={(e) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, phoneNumber: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="10-digit number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">College</label>
+                  <Select 
+                    value={addingMember.newMember.collegeType || 'CBIT'}
+                    onValueChange={(value) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, collegeType: value, college: value }
+                    })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CBIT">CBIT</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {addingMember.newMember.collegeType === 'Other' && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-2">Custom College Name</label>
+                    <Input
+                      value={addingMember.newMember.customCollege || ''}
+                      onChange={(e) => setAddingMember({
+                        ...addingMember,
+                        newMember: { ...addingMember.newMember, customCollege: e.target.value }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      placeholder="Enter college name"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Degree Type</label>
+                  <Select 
+                    value={addingMember.newMember.degreeType || 'B.Tech'}
+                    onValueChange={(value) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, degreeType: value, degree: value }
+                    })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="B.Tech">B.Tech</SelectItem>
+                      <SelectItem value="B.E">B.E</SelectItem>
+                      <SelectItem value="M.Tech">M.Tech</SelectItem>
+                      <SelectItem value="MCA">MCA</SelectItem>
+                      <SelectItem value="BCA">BCA</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {addingMember.newMember.degreeType === 'Other' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Custom Degree</label>
+                    <Input
+                      value={addingMember.newMember.customDegree || ''}
+                      onChange={(e) => setAddingMember({
+                        ...addingMember,
+                        newMember: { ...addingMember.newMember, customDegree: e.target.value }
+                      })}
+                      className="bg-gray-800 border-gray-700 text-white"
+                      placeholder="Enter degree"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Year of Study</label>
+                  <Select 
+                    value={addingMember.newMember.yearOfStudy || '1st Year'}
+                    onValueChange={(value) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, yearOfStudy: value }
+                    })}
+                  >
+                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1st Year">1st Year</SelectItem>
+                      <SelectItem value="2nd Year">2nd Year</SelectItem>
+                      <SelectItem value="3rd Year">3rd Year</SelectItem>
+                      <SelectItem value="4th Year">4th Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Branch/Department</label>
+                  <Input
+                    value={addingMember.newMember.branch || ''}
+                    onChange={(e) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, branch: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="e.g., CSE, ECE, IT"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Roll Number / Registration Number</label>
+                  <Input
+                    value={addingMember.newMember.rollNumber || ''}
+                    onChange={(e) => setAddingMember({
+                      ...addingMember,
+                      newMember: { ...addingMember.newMember, rollNumber: e.target.value }
+                    })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                    placeholder="Enter roll/registration number"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-gray-700">
+                <Button
+                  onClick={saveNewMember}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add Member
+                </Button>
+                <Button
+                  onClick={() => setAddingMember(null)}
+                  variant="outline"
+                  className="flex-1 border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Team Details Modal */}
+      {editingTeamDetails && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setEditingTeamDetails(null)}
+        >
+          <div 
+            className="bg-gray-900 border border-purple-500/50 rounded-lg p-6 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-purple-400">Edit Team Details</h3>
+              <Button
+                onClick={() => setEditingTeamDetails(null)}
+                variant="ghost"
+                size="icon"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Team Name *</label>
+                <Input
+                  value={editingTeamDetails.teamName}
+                  onChange={(e) => setEditingTeamDetails({
+                    ...editingTeamDetails,
+                    teamName: e.target.value
+                  })}
+                  className="bg-gray-800 border-gray-700 text-white"
+                  placeholder="Enter team name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Event Type</label>
+                <Select 
+                  value={editingTeamDetails.eventType}
+                  onValueChange={(value) => setEditingTeamDetails({
+                    ...editingTeamDetails,
+                    eventType: value as 'hackathon' | 'ctf'
+                  })}
+                >
+                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hackathon">Hackathon</SelectItem>
+                    <SelectItem value="ctf">CTF</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-gray-700">
+                <Button
+                  onClick={saveTeamDetails}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </Button>
+                <Button
+                  onClick={() => setEditingTeamDetails(null)}
+                  variant="outline"
+                  className="flex-1 border-gray-700"
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
           </div>
         </div>
