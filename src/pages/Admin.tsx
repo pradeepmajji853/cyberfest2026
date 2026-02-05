@@ -29,6 +29,19 @@ interface TeamMember {
   phoneNumber: string;
 }
 
+interface Movement {
+  type: 'resting' | 'canteen' | 'other';
+  timestamp: string;
+  notes?: string;
+}
+
+interface FoodTracking {
+  lunch6th: boolean;
+  dinner6th: boolean;
+  breakfast7th: boolean;
+  lunch7th: boolean;
+}
+
 interface Registration {
   id: string;
   eventType: 'hackathon' | 'ctf';
@@ -44,6 +57,16 @@ interface Registration {
   confirmedAt?: string;
   isValid?: boolean;
   rejectedAt?: string;
+  // Event Management Fields
+  checkedIn?: boolean;
+  checkedInAt?: string;
+  initialVenue?: 'venue1' | 'venue2' | 'venue3';
+  initialVenueAttendance?: boolean;
+  finalLab?: 'ctf-lab' | 'hack-lab1' | 'hack-lab2' | 'hack-lab3' | 'hack-lab4' | 'hack-lab5' | 'hack-lab6' | 'hack-lab7' | 'hack-lab8' | 'hack-lab9';
+  labAttendance?: boolean;
+  foodTracking?: FoodTracking;
+  movements?: Movement[];
+  remarks?: string;
 }
 
 const Admin = () => {
@@ -65,6 +88,13 @@ const Admin = () => {
   const [addingMember, setAddingMember] = useState<{ regId: string; newMember: Partial<TeamMember> } | null>(null);
   const [editingTeamDetails, setEditingTeamDetails] = useState<{ regId: string; teamName: string; eventType: 'hackathon' | 'ctf' } | null>(null);
   const [importingJSON, setImportingJSON] = useState(false);
+  const [activeTab, setActiveTab] = useState<'registrations' | 'event-management'>('registrations');
+  const [venueAssignmentMode, setVenueAssignmentMode] = useState(false);
+  const [venue1Count, setVenue1Count] = useState(0);
+  const [venue2Count, setVenue2Count] = useState(0);
+  const [venue3Count, setVenue3Count] = useState(0);
+  const [labAssignmentMode, setLabAssignmentMode] = useState(false);
+  const [labCounts, setLabCounts] = useState<{ [key: string]: number }>({});
 
   const COOLDOWN_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -961,6 +991,195 @@ const Admin = () => {
     }
   };
 
+  // EVENT MANAGEMENT FUNCTIONS
+  
+  // Check-in Functions
+  const handleCheckIn = async (regId: string) => {
+    try {
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, {
+        checkedIn: true,
+        checkedInAt: new Date().toISOString()
+      });
+      setRegistrations(prev => prev.map(reg => 
+        reg.id === regId ? { ...reg, checkedIn: true, checkedInAt: new Date().toISOString() } : reg
+      ));
+    } catch (error) {
+      console.error('Error checking in:', error);
+      alert('Failed to check in team');
+    }
+  };
+
+  const handleBulkCheckIn = async (regIds: string[]) => {
+    try {
+      const updates = regIds.map(regId => {
+        const regDoc = doc(db, 'registrations', regId);
+        return updateDoc(regDoc, {
+          checkedIn: true,
+          checkedInAt: new Date().toISOString()
+        });
+      });
+      await Promise.all(updates);
+      await fetchRegistrations();
+      alert(`Successfully checked in ${regIds.length} teams`);
+    } catch (error) {
+      console.error('Error bulk check-in:', error);
+      alert('Failed to check in teams');
+    }
+  };
+
+  // Venue Assignment Functions
+  const assignToVenues = async () => {
+    const nonRejected = registrations.filter(r => r.isValid !== false && !r.initialVenue);
+    const total = nonRejected.length;
+    
+    if (venue1Count + venue2Count + venue3Count !== total) {
+      alert(`Total must equal ${total}. Current: ${venue1Count + venue2Count + venue3Count}`);
+      return;
+    }
+
+    try {
+      let venue1Assigned = 0;
+      let venue2Assigned = 0;
+      let venue3Assigned = 0;
+
+      for (const reg of nonRejected) {
+        let venue: 'venue1' | 'venue2' | 'venue3';
+        
+        if (venue1Assigned < venue1Count) {
+          venue = 'venue1';
+          venue1Assigned++;
+        } else if (venue2Assigned < venue2Count) {
+          venue = 'venue2';
+          venue2Assigned++;
+        } else {
+          venue = 'venue3';
+          venue3Assigned++;
+        }
+
+        const regDoc = doc(db, 'registrations', reg.id);
+        await updateDoc(regDoc, { initialVenue: venue });
+      }
+
+      await fetchRegistrations();
+      setVenueAssignmentMode(false);
+      alert('Venue assignment complete!');
+    } catch (error) {
+      console.error('Error assigning venues:', error);
+      alert('Failed to assign venues');
+    }
+  };
+
+  const markVenueAttendance = async (regId: string, present: boolean) => {
+    try {
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { initialVenueAttendance: present });
+      setRegistrations(prev => prev.map(reg => 
+        reg.id === regId ? { ...reg, initialVenueAttendance: present } : reg
+      ));
+    } catch (error) {
+      console.error('Error marking attendance:', error);
+      alert('Failed to mark attendance');
+    }
+  };
+
+  // Lab Assignment Functions
+  const assignToLab = async (regId: string, lab: string) => {
+    try {
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { finalLab: lab });
+      setRegistrations(prev => prev.map(reg => 
+        reg.id === regId ? { ...reg, finalLab: lab as Registration['finalLab'] } : reg
+      ));
+    } catch (error) {
+      console.error('Error assigning lab:', error);
+      alert('Failed to assign lab');
+    }
+  };
+
+  const markLabAttendance = async (regId: string, present: boolean) => {
+    try {
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { labAttendance: present });
+      setRegistrations(prev => prev.map(reg => 
+        reg.id === regId ? { ...reg, labAttendance: present } : reg
+      ));
+    } catch (error) {
+      console.error('Error marking lab attendance:', error);
+      alert('Failed to mark lab attendance');
+    }
+  };
+
+  // Food Tracking Functions
+  const toggleFood = async (regId: string, meal: keyof FoodTracking) => {
+    try {
+      const reg = registrations.find(r => r.id === regId);
+      if (!reg) return;
+
+      const currentTracking = reg.foodTracking || {
+        lunch6th: false,
+        dinner6th: false,
+        breakfast7th: false,
+        lunch7th: false
+      };
+
+      const updatedTracking = {
+        ...currentTracking,
+        [meal]: !currentTracking[meal]
+      };
+
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { foodTracking: updatedTracking });
+      
+      setRegistrations(prev => prev.map(r => 
+        r.id === regId ? { ...r, foodTracking: updatedTracking } : r
+      ));
+    } catch (error) {
+      console.error('Error toggling food:', error);
+      alert('Failed to update food tracking');
+    }
+  };
+
+  // Movement Tracking Functions
+  const addMovement = async (regId: string, type: Movement['type'], notes?: string) => {
+    try {
+      const reg = registrations.find(r => r.id === regId);
+      if (!reg) return;
+
+      const newMovement: Movement = {
+        type,
+        timestamp: new Date().toISOString(),
+        notes
+      };
+
+      const movements = [...(reg.movements || []), newMovement];
+
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { movements });
+      
+      setRegistrations(prev => prev.map(r => 
+        r.id === regId ? { ...r, movements } : r
+      ));
+    } catch (error) {
+      console.error('Error adding movement:', error);
+      alert('Failed to add movement');
+    }
+  };
+
+  // Remarks Functions
+  const updateRemarks = async (regId: string, remarks: string) => {
+    try {
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { remarks });
+      setRegistrations(prev => prev.map(r => 
+        r.id === regId ? { ...r, remarks } : r
+      ));
+    } catch (error) {
+      console.error('Error updating remarks:', error);
+      alert('Failed to update remarks');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -982,6 +1201,33 @@ const Admin = () => {
           </Button>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="mb-6 flex gap-2 border-b border-gray-700">
+          <button
+            onClick={() => setActiveTab('registrations')}
+            className={`px-6 py-3 font-medium transition-all ${
+              activeTab === 'registrations'
+                ? 'border-b-2 border-purple-500 text-purple-400'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Registrations
+          </button>
+          <button
+            onClick={() => setActiveTab('event-management')}
+            className={`px-6 py-3 font-medium transition-all ${
+              activeTab === 'event-management'
+                ? 'border-b-2 border-purple-500 text-purple-400'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            Event Management
+          </button>
+        </div>
+
+        {/* Registrations Tab */}
+        {activeTab === 'registrations' && (
+          <div>
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
           <Card className="bg-gray-800/50 border-purple-500/20">
@@ -1488,7 +1734,6 @@ const Admin = () => {
             </CardContent>
           </Card>
         )}
-      </div>
 
       {/* Edit Payment Modal */}
       {editingPayment && (
@@ -2079,6 +2324,409 @@ const Admin = () => {
           </div>
         </div>
       )}
+          </div>
+        )}
+
+        {/* Event Management Tab */}
+        {activeTab === 'event-management' && (
+          <div className="space-y-6">
+            {/* Event Management Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card className="bg-gray-800/50 border-purple-500/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400">Checked In</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {registrations.filter(r => r.checkedIn).length} / {registrations.filter(r => r.isValid !== false).length}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-800/50 border-purple-500/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400">Venue Assigned</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {registrations.filter(r => r.initialVenue).length}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-800/50 border-purple-500/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400">Lab Assigned</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {registrations.filter(r => r.finalLab).length}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gray-800/50 border-purple-500/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400">Food Count (Lunch 6th)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">
+                    {registrations.filter(r => r.foodTracking?.lunch6th).reduce((sum, r) => sum + r.teamMembers.length, 0)}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Check-in Section */}
+            <Card className="bg-gray-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-xl">Check-in Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex gap-3 mb-4">
+                    <Button
+                      onClick={() => handleBulkCheckIn(registrations.filter(r => !r.checkedIn && r.isValid !== false).map(r => r.id))}
+                      className="bg-green-600 hover:bg-green-700"
+                      disabled={registrations.filter(r => !r.checkedIn && r.isValid !== false).length === 0}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Check In All ({registrations.filter(r => !r.checkedIn && r.isValid !== false).length})
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                      <div key={reg.id} className="flex items-center justify-between bg-gray-900/50 p-3 rounded">
+                        <div className="flex-1">
+                          <span className="font-medium">{reg.teamName}</span>
+                          <span className="text-gray-400 ml-2">({reg.teamMembers.length} members)</span>
+                          {reg.checkedIn && (
+                            <Badge className="ml-2 bg-green-500/20 text-green-400">
+                              ✓ Checked in {new Date(reg.checkedInAt!).toLocaleTimeString()}
+                            </Badge>
+                          )}
+                        </div>
+                        {!reg.checkedIn && (
+                          <Button
+                            onClick={() => handleCheckIn(reg.id)}
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            Check In
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Venue Assignment Section */}
+            <Card className="bg-gray-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-xl">Initial Venue Assignment</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {!venueAssignmentMode ? (
+                  <div>
+                    <p className="text-gray-400 mb-4">
+                      Assigned: {registrations.filter(r => r.initialVenue).length} / {registrations.filter(r => r.isValid !== false).length}
+                    </p>
+                    <Button
+                      onClick={() => setVenueAssignmentMode(true)}
+                      className="bg-purple-600 hover:bg-purple-700"
+                      disabled={registrations.filter(r => r.isValid !== false && !r.initialVenue).length === 0}
+                    >
+                      Assign Venues
+                    </Button>
+
+                    {/* Venue Lists */}
+                    <div className="grid md:grid-cols-3 gap-4 mt-6">
+                      {['venue1', 'venue2', 'venue3'].map(venue => {
+                        const venueTeams = registrations.filter(r => r.initialVenue === venue);
+                        return (
+                          <div key={venue} className="bg-gray-900/50 p-4 rounded-lg">
+                            <h3 className="font-bold mb-2 text-purple-400">
+                              Venue {venue.slice(-1)} ({venueTeams.length} teams)
+                            </h3>
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                              {venueTeams.map(reg => (
+                                <div key={reg.id} className="text-sm bg-gray-800/50 p-2 rounded">
+                                  <div className="flex items-center justify-between">
+                                    <span>{reg.teamName}</span>
+                                    <input
+                                      type="checkbox"
+                                      checked={reg.initialVenueAttendance || false}
+                                      onChange={(e) => markVenueAttendance(reg.id, e.target.checked)}
+                                      className="w-4 h-4"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm mb-2">Venue 1 Count</label>
+                        <Input
+                          type="number"
+                          value={venue1Count}
+                          onChange={(e) => setVenue1Count(parseInt(e.target.value) || 0)}
+                          className="bg-gray-900/50 border-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-2">Venue 2 Count</label>
+                        <Input
+                          type="number"
+                          value={venue2Count}
+                          onChange={(e) => setVenue2Count(parseInt(e.target.value) || 0)}
+                          className="bg-gray-900/50 border-gray-700"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-2">Venue 3 Count</label>
+                        <Input
+                          type="number"
+                          value={venue3Count}
+                          onChange={(e) => setVenue3Count(parseInt(e.target.value) || 0)}
+                          className="bg-gray-900/50 border-gray-700"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                      Total: {venue1Count + venue2Count + venue3Count} / {registrations.filter(r => r.isValid !== false && !r.initialVenue).length}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button onClick={assignToVenues} className="bg-green-600 hover:bg-green-700">
+                        Assign
+                      </Button>
+                      <Button onClick={() => setVenueAssignmentMode(false)} variant="outline">
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Lab Assignment Section */}
+            <Card className="bg-gray-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-xl">Final Lab Assignment</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Lab Selection Grid */}
+                  <div className="grid gap-3">
+                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                      <div key={reg.id} className="bg-gray-900/50 p-3 rounded flex items-center gap-3">
+                        <div className="flex-1">
+                          <span className="font-medium">{reg.teamName}</span>
+                          <span className="text-gray-400 ml-2">({reg.eventType.toUpperCase()})</span>
+                        </div>
+                        <Select
+                          value={reg.finalLab || ''}
+                          onValueChange={(value) => assignToLab(reg.id, value)}
+                        >
+                          <SelectTrigger className="w-48 bg-gray-800 border-gray-700">
+                            <SelectValue placeholder="Assign lab..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {reg.eventType === 'ctf' ? (
+                              <SelectItem value="ctf-lab">CTF Lab</SelectItem>
+                            ) : (
+                              <>
+                                <SelectItem value="hack-lab1">Hackathon Lab 1</SelectItem>
+                                <SelectItem value="hack-lab2">Hackathon Lab 2</SelectItem>
+                                <SelectItem value="hack-lab3">Hackathon Lab 3</SelectItem>
+                                <SelectItem value="hack-lab4">Hackathon Lab 4</SelectItem>
+                                <SelectItem value="hack-lab5">Hackathon Lab 5</SelectItem>
+                                <SelectItem value="hack-lab6">Hackathon Lab 6</SelectItem>
+                                <SelectItem value="hack-lab7">Hackathon Lab 7</SelectItem>
+                                <SelectItem value="hack-lab8">Hackathon Lab 8</SelectItem>
+                                <SelectItem value="hack-lab9">Hackathon Lab 9</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <input
+                          type="checkbox"
+                          checked={reg.labAttendance || false}
+                          onChange={(e) => markLabAttendance(reg.id, e.target.checked)}
+                          className="w-5 h-5"
+                          title="Lab Attendance"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Lab Counts */}
+                  <div className="grid md:grid-cols-5 gap-2 mt-6">
+                    {['ctf-lab', 'hack-lab1', 'hack-lab2', 'hack-lab3', 'hack-lab4', 'hack-lab5', 'hack-lab6', 'hack-lab7', 'hack-lab8', 'hack-lab9'].map(lab => {
+                      const labTeams = registrations.filter(r => r.finalLab === lab);
+                      return (
+                        <div key={lab} className="bg-gray-900/50 p-2 rounded text-center">
+                          <div className="text-xs text-gray-400">{lab}</div>
+                          <div className="text-lg font-bold">{labTeams.length}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Food Tracking Section */}
+            <Card className="bg-gray-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-xl">Food Tracking</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Food Stats */}
+                  <div className="grid md:grid-cols-4 gap-3 mb-6">
+                    {[
+                      { key: 'lunch6th', label: 'Lunch (6th)' },
+                      { key: 'dinner6th', label: 'Dinner (6th)' },
+                      { key: 'breakfast7th', label: 'Breakfast (7th)' },
+                      { key: 'lunch7th', label: 'Lunch (7th)' }
+                    ].map(meal => {
+                      const count = registrations.filter(r => r.foodTracking?.[meal.key as keyof FoodTracking]).reduce((sum, r) => sum + r.teamMembers.length, 0);
+                      return (
+                        <div key={meal.key} className="bg-gray-900/50 p-3 rounded text-center">
+                          <div className="text-sm text-gray-400">{meal.label}</div>
+                          <div className="text-2xl font-bold text-green-400">{count}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Food Tracking Grid */}
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                      <div key={reg.id} className="bg-gray-900/50 p-3 rounded">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium">{reg.teamName}</span>
+                          <span className="text-gray-400">({reg.teamMembers.length} members)</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            { key: 'lunch6th', label: 'L-6th' },
+                            { key: 'dinner6th', label: 'D-6th' },
+                            { key: 'breakfast7th', label: 'B-7th' },
+                            { key: 'lunch7th', label: 'L-7th' }
+                          ].map(meal => (
+                            <button
+                              key={meal.key}
+                              onClick={() => toggleFood(reg.id, meal.key as keyof FoodTracking)}
+                              className={`p-2 rounded text-sm transition-all ${
+                                reg.foodTracking?.[meal.key as keyof FoodTracking]
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                              }`}
+                            >
+                              {meal.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Movement & Remarks Section */}
+            <Card className="bg-gray-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-xl">Movement Tracking & Remarks</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {registrations.filter(r => r.isValid !== false).map(reg => (
+                    <div key={reg.id} className="bg-gray-900/50 p-4 rounded">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-medium text-lg">{reg.teamName}</span>
+                      </div>
+
+                      {/* Movement Buttons */}
+                      <div className="flex gap-2 mb-3">
+                        <Button
+                          onClick={() => {
+                            const notes = prompt('Notes (optional):');
+                            addMovement(reg.id, 'resting', notes || undefined);
+                          }}
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          Resting
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const notes = prompt('Notes (optional):');
+                            addMovement(reg.id, 'canteen', notes || undefined);
+                          }}
+                          size="sm"
+                          className="bg-orange-600 hover:bg-orange-700"
+                        >
+                          Canteen
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            const notes = prompt('Where/Why:');
+                            if (notes) addMovement(reg.id, 'other', notes);
+                          }}
+                          size="sm"
+                          className="bg-purple-600 hover:bg-purple-700"
+                        >
+                          Other
+                        </Button>
+                      </div>
+
+                      {/* Movement History */}
+                      {reg.movements && reg.movements.length > 0 && (
+                        <div className="mb-3 p-2 bg-gray-800 rounded">
+                          <div className="text-xs text-gray-400 mb-1">Recent Movements:</div>
+                          <div className="space-y-1">
+                            {reg.movements.slice(-3).reverse().map((mov, idx) => (
+                              <div key={idx} className="text-xs">
+                                <span className="text-purple-400">{new Date(mov.timestamp).toLocaleTimeString()}</span>
+                                {' - '}
+                                <span className="text-gray-300">{mov.type}</span>
+                                {mov.notes && <span className="text-gray-500"> ({mov.notes})</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Remarks */}
+                      <div>
+                        <textarea
+                          value={reg.remarks || ''}
+                          onChange={(e) => updateRemarks(reg.id, e.target.value)}
+                          placeholder="Add remarks..."
+                          className="w-full bg-gray-800 border-gray-700 rounded p-2 text-sm"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
