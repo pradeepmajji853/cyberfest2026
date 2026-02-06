@@ -1025,6 +1025,11 @@ const PsAdmin = () => {
                       </div>
                       {(() => {
                         const filled = ps.assignedCount ?? ps.assignedTeams?.length ?? 0;
+                        if (ps.isSpecialTrack) {
+                          if (filled >= 25) return <Badge className="bg-red-600">Full ({filled}/25)</Badge>;
+                          if (filled > 0) return <Badge className="bg-purple-600">{filled}/25</Badge>;
+                          return <Badge className="bg-green-600">Free (0/25)</Badge>;
+                        }
                         if (filled > 0) return <Badge className="bg-purple-600">{filled} {filled === 1 ? 'team' : 'teams'}</Badge>;
                         return <Badge className="bg-green-600">Free</Badge>;
                       })()}
@@ -1104,7 +1109,7 @@ const PsAdmin = () => {
 
               <div className="rounded-lg border border-gray-800 bg-gray-900/30 p-4">
                 <div className="text-sm text-gray-300">
-                  Teams selected: <span className="text-white font-semibold">{selectedPs.assignedCount ?? selectedPs.assignedTeams?.length ?? 0}</span>
+                  Teams selected: <span className="text-white font-semibold">{selectedPs.assignedCount ?? selectedPs.assignedTeams?.length ?? 0}{selectedPs.isSpecialTrack ? '/25' : ''}</span>
                 </div>
                 {selectedPs.assignedTeams?.length ? (
                   <div className="mt-2 grid gap-1">
