@@ -311,17 +311,20 @@ const ProblemStatementSelection = () => {
 
   const claimProblemStatement = async (psId: string) => {
     if (!teamKey || !teamDoc) {
-      setClaimError('Not authenticated. Please log in first.');\n      return;
+      setClaimError('Not authenticated. Please log in first.');
+      return;
     }
 
     if (!navigator.onLine) {
-      setClaimError('No internet connection. Please check your network and try again.');\n      return;
+      setClaimError('No internet connection. Please check your network and try again.');
+      return;
     }
 
     // Verify the PS still exists in the current list
     const psExists = psList.find((ps) => ps.id === psId);
     if (!psExists) {
-      setClaimError('Problem statement not found. It may have been removed. Please refresh the page.');\n      return;
+      setClaimError('Problem statement not found. It may have been removed. Please refresh the page.');
+      return;
     }
 
     setClaimError(null);
