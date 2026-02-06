@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { getFirestore, initializeFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,27 +21,31 @@ const requiredKeys: Array<keyof typeof firebaseConfig> = [
 ];
 
 const missing = requiredKeys.filter((k) => !firebaseConfig[k]);
+
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
+
 if (missing.length) {
-  // This usually happens when `.env` wasn't loaded (dev server not restarted) or variables are named incorrectly.
-  // We throw early so Firestore doesn't fail with confusing "offline" errors.
-  throw new Error(
-    `Missing Firebase env vars: ${missing
+  // Warn instead of throwing so the landing page still renders without Firebase config.
+  console.warn(
+    `[Firebase] Missing env vars: ${missing
       .map((k) => `VITE_FIREBASE_${String(k).toUpperCase()}`)
-      .join(', ')}. Check your .env and restart the dev server.`
+      .join(', ')}. Firebase features (registration, admin) will be unavailable. ` +
+    `Add a .env file and restart the dev server to enable them.`
   );
+} else {
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
+
+  // Initialize services
+  const forceLongPolling = String(import.meta.env.VITE_FIREBASE_FORCE_LONG_POLLING ?? '') === 'true';
+
+  db = forceLongPolling
+    ? initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+      })
+    : getFirestore(app);
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize services
-const forceLongPolling = String(import.meta.env.VITE_FIREBASE_FORCE_LONG_POLLING ?? '') === 'true';
-
-export const db = forceLongPolling
-  ? initializeFirestore(app, {
-      // Helps in some campus networks / proxies where WebChannel/WebSocket gets blocked.
-      experimentalForceLongPolling: true,
-    })
-  : getFirestore(app);
-
+export { db };
 export default app;

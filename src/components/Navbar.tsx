@@ -3,13 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import cyberfestLogo from '@/assets/cyberfest-logo.png';
-import RegistrationDialog from './RegistrationDialog';
 
 const navItems = [
   { name: 'Home', href: '#home' },
   { name: 'About', href: '#about' },
   { name: 'Events', href: '#events' },
-  { name: 'Problem Statements', href: '/problem-statements' },
   { name: 'Schedule', href: '#schedule' },
   { name: 'Committee', href: '#committee' },
   { name: 'Venue', href: '#venue' },
@@ -26,7 +24,6 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -156,12 +153,6 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Registration Dialog */}
-      <RegistrationDialog 
-        isOpen={isRegistrationOpen} 
-        onClose={() => setIsRegistrationOpen(false)} 
-      />
     </motion.nav>
   );
 };
