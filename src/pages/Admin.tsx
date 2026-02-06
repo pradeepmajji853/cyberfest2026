@@ -96,6 +96,7 @@ const Admin = () => {
   const [editingTeamDetails, setEditingTeamDetails] = useState<{ regId: string; teamName: string; eventType: 'hackathon' | 'ctf' } | null>(null);
   const [importingJSON, setImportingJSON] = useState(false);
   const [activeTab, setActiveTab] = useState<'registrations' | 'event-management'>('registrations');
+  const [eventManagementSearch, setEventManagementSearch] = useState('');
   const [venueAssignmentMode, setVenueAssignmentMode] = useState(false);
   const [venue1Count, setVenue1Count] = useState(0);
   const [venue2Count, setVenue2Count] = useState(0);
@@ -2730,6 +2731,21 @@ const Admin = () => {
         {/* Event Management Tab */}
         {activeTab === 'event-management' && (
           <div className="space-y-6">
+            {/* Search Bar */}
+            <Card className="bg-gray-800/50 border-purple-500/20">
+              <CardContent className="pt-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search by team name, member name, email, phone, transaction ID, venue, or lab..."
+                    value={eventManagementSearch}
+                    onChange={(e) => setEventManagementSearch(e.target.value)}
+                    className="pl-10 bg-gray-900/50 border-gray-700 text-white w-full"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Event Management Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="bg-gray-800/50 border-purple-500/20">
@@ -2796,7 +2812,25 @@ const Admin = () => {
                   </div>
 
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                    {registrations
+                      .filter(r => r.isValid !== false)
+                      .filter(r => {
+                        if (!eventManagementSearch) return true;
+                        const search = eventManagementSearch.toLowerCase();
+                        return (
+                          r.teamName.toLowerCase().includes(search) ||
+                          r.transactionId?.toLowerCase().includes(search) ||
+                          r.id.toLowerCase().includes(search) ||
+                          r.initialVenue?.toLowerCase().includes(search) ||
+                          r.finalLab?.toLowerCase().includes(search) ||
+                          r.teamMembers.some(m => 
+                            m.name.toLowerCase().includes(search) ||
+                            m.email.toLowerCase().includes(search) ||
+                            m.phoneNumber.includes(search)
+                          )
+                        );
+                      })
+                      .map(reg => (
                       <div key={reg.id} className="flex items-center justify-between bg-gray-900/50 p-3 rounded">
                         <div className="flex-1">
                           <span className="font-medium">{reg.teamName}</span>
@@ -2845,7 +2879,22 @@ const Admin = () => {
                     {/* Venue Lists */}
                     <div className="grid md:grid-cols-3 gap-4 mt-6">
                       {['venue1', 'venue2', 'venue3'].map(venue => {
-                        const venueTeams = registrations.filter(r => r.initialVenue === venue);
+                        const venueTeams = registrations
+                          .filter(r => r.initialVenue === venue)
+                          .filter(r => {
+                            if (!eventManagementSearch) return true;
+                            const search = eventManagementSearch.toLowerCase();
+                            return (
+                              r.teamName.toLowerCase().includes(search) ||
+                              r.transactionId?.toLowerCase().includes(search) ||
+                              r.id.toLowerCase().includes(search) ||
+                              r.teamMembers.some(m => 
+                                m.name.toLowerCase().includes(search) ||
+                                m.email.toLowerCase().includes(search) ||
+                                m.phoneNumber.includes(search)
+                              )
+                            );
+                          });
                         return (
                           <div key={venue} className="bg-gray-900/50 p-4 rounded-lg">
                             <h3 className="font-bold mb-2 text-purple-400">
@@ -2973,7 +3022,25 @@ const Admin = () => {
 
                   {/* Manual Lab Selection Grid */}
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                    {registrations
+                      .filter(r => r.isValid !== false)
+                      .filter(r => {
+                        if (!eventManagementSearch) return true;
+                        const search = eventManagementSearch.toLowerCase();
+                        return (
+                          r.teamName.toLowerCase().includes(search) ||
+                          r.transactionId?.toLowerCase().includes(search) ||
+                          r.id.toLowerCase().includes(search) ||
+                          r.initialVenue?.toLowerCase().includes(search) ||
+                          r.finalLab?.toLowerCase().includes(search) ||
+                          r.teamMembers.some(m => 
+                            m.name.toLowerCase().includes(search) ||
+                            m.email.toLowerCase().includes(search) ||
+                            m.phoneNumber.includes(search)
+                          )
+                        );
+                      })
+                      .map(reg => (
                       <div key={reg.id} className="bg-gray-900/50 p-3 rounded flex items-center gap-3">
                         <div className="flex-1">
                           <span className="font-medium">{reg.teamName}</span>
@@ -3065,7 +3132,25 @@ const Admin = () => {
 
                   {/* Food Tracking Grid */}
                   <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                    {registrations
+                      .filter(r => r.isValid !== false)
+                      .filter(r => {
+                        if (!eventManagementSearch) return true;
+                        const search = eventManagementSearch.toLowerCase();
+                        return (
+                          r.teamName.toLowerCase().includes(search) ||
+                          r.transactionId?.toLowerCase().includes(search) ||
+                          r.id.toLowerCase().includes(search) ||
+                          r.initialVenue?.toLowerCase().includes(search) ||
+                          r.finalLab?.toLowerCase().includes(search) ||
+                          r.teamMembers.some(m => 
+                            m.name.toLowerCase().includes(search) ||
+                            m.email.toLowerCase().includes(search) ||
+                            m.phoneNumber.includes(search)
+                          )
+                        );
+                      })
+                      .map(reg => (
                       <div key={reg.id} className="bg-gray-900/50 p-3 rounded">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium">{reg.teamName}</span>
@@ -3129,7 +3214,25 @@ const Admin = () => {
 
                   {/* Kit Distribution Grid */}
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                    {registrations
+                      .filter(r => r.isValid !== false)
+                      .filter(r => {
+                        if (!eventManagementSearch) return true;
+                        const search = eventManagementSearch.toLowerCase();
+                        return (
+                          r.teamName.toLowerCase().includes(search) ||
+                          r.transactionId?.toLowerCase().includes(search) ||
+                          r.id.toLowerCase().includes(search) ||
+                          r.initialVenue?.toLowerCase().includes(search) ||
+                          r.finalLab?.toLowerCase().includes(search) ||
+                          r.teamMembers.some(m => 
+                            m.name.toLowerCase().includes(search) ||
+                            m.email.toLowerCase().includes(search) ||
+                            m.phoneNumber.includes(search)
+                          )
+                        );
+                      })
+                      .map(reg => (
                       <div key={reg.id} className="bg-gray-900/50 p-4 rounded">
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex-1">
@@ -3208,7 +3311,25 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {registrations.filter(r => r.isValid !== false).map(reg => (
+                  {registrations
+                    .filter(r => r.isValid !== false)
+                    .filter(r => {
+                      if (!eventManagementSearch) return true;
+                      const search = eventManagementSearch.toLowerCase();
+                      return (
+                        r.teamName.toLowerCase().includes(search) ||
+                        r.transactionId?.toLowerCase().includes(search) ||
+                        r.id.toLowerCase().includes(search) ||
+                        r.initialVenue?.toLowerCase().includes(search) ||
+                        r.finalLab?.toLowerCase().includes(search) ||
+                        r.teamMembers.some(m => 
+                          m.name.toLowerCase().includes(search) ||
+                          m.email.toLowerCase().includes(search) ||
+                          m.phoneNumber.includes(search)
+                        )
+                      );
+                    })
+                    .map(reg => (
                     <div key={reg.id} className="bg-gray-900/50 p-4 rounded">
                       <div className="flex items-center justify-between mb-3">
                         <span className="font-medium text-lg">{reg.teamName}</span>
