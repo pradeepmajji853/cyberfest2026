@@ -311,17 +311,20 @@ const ProblemStatementSelection = () => {
 
   const claimProblemStatement = async (psId: string) => {
     if (!teamKey || !teamDoc) {
-      setClaimError('Not authenticated. Please log in first.');\n      return;
+      setClaimError('Not authenticated. Please log in first.');
+      return;
     }
 
     if (!navigator.onLine) {
-      setClaimError('No internet connection. Please check your network and try again.');\n      return;
+      setClaimError('No internet connection. Please check your network and try again.');
+      return;
     }
 
     // Verify the PS still exists in the current list
     const psExists = psList.find((ps) => ps.id === psId);
     if (!psExists) {
-      setClaimError('Problem statement not found. It may have been removed. Please refresh the page.');\n      return;
+      setClaimError('Problem statement not found. It may have been removed. Please refresh the page.');
+      return;
     }
 
     setClaimError(null);
@@ -359,11 +362,6 @@ const ProblemStatementSelection = () => {
           : [];
 
         const isAlreadyIn = assignedTeams.includes(teamKey);
-        const maxTeams = typeof ps.maxTeams === 'number' ? ps.maxTeams : 3;
-        
-        if (!isAlreadyIn && assignedTeams.length >= maxTeams) {
-          throw new Error(`This problem statement is full (${maxTeams}/${maxTeams} teams). Please select another.`);
-        }
 
         const nextAssignedTeams = isAlreadyIn ? assignedTeams : [...assignedTeams, teamKey];
 
@@ -634,10 +632,8 @@ const ProblemStatementSelection = () => {
             <div className="grid gap-3 md:grid-cols-2">
               {filteredPsList.map((ps) => {
                     const filled = ps.assignedTeams.length;
-                    const maxTeams = ps.maxTeams ?? 3;
-                    const full = filled >= maxTeams;
                     const takenByYou = !!effectiveTeamKey && ps.assignedTeams.includes(effectiveTeamKey);
-                    const disabled = !authenticated || (!takenByYou && (!canClaim || full));
+                    const disabled = !authenticated || (!takenByYou && !canClaim);
 
                 return (
                   <div key={ps.id} className="rounded-lg border border-primary/20 bg-black/20 p-4 hover:border-primary/40 hover:bg-black/30 transition">
@@ -664,11 +660,9 @@ const ProblemStatementSelection = () => {
                       <div className="flex flex-col items-end gap-2">
                         {takenByYou ? (
                           <Badge className="bg-primary text-primary-foreground">Yours</Badge>
-                        ) : full ? (
-                          <Badge variant="secondary">Full</Badge>
                         ) : (
                           <Badge variant="outline" className="border-green-500/40 text-green-300">
-                            {filled}/{maxTeams} filled
+                            {filled} {filled === 1 ? 'team' : 'teams'}
                           </Badge>
                         )}
                       </div>
@@ -680,7 +674,7 @@ const ProblemStatementSelection = () => {
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <div className="text-xs text-foreground/60">
-                        {full ? `Team limit reached (${maxTeams}).` : `Slots left: ${Math.max(0, maxTeams - filled)}`}
+                        {filled} {filled === 1 ? 'team has' : 'teams have'} selected this
                       </div>
                       <div className="flex items-center gap-2">
                         <Button size="sm" variant="secondary" onClick={() => openPsDetails(ps)}>
@@ -693,8 +687,6 @@ const ProblemStatementSelection = () => {
                           title={
                             !authenticated 
                               ? 'Please authenticate first' 
-                              : full 
-                              ? 'This problem statement is full' 
                               : !canClaim && !takenByYou
                               ? 'You have already selected a problem statement'
                               : claimingId !== null && claimingId !== ps.id
@@ -711,8 +703,6 @@ const ProblemStatementSelection = () => {
                       <div className="mt-2 text-xs text-foreground/60">⚠ Authenticate to enable selection.</div>
                     ) : authenticated && !canClaim && !takenByYou ? (
                       <div className="mt-2 text-xs text-amber-400/80">✓ Your team has already selected a problem statement.</div>
-                    ) : full && !takenByYou ? (
-                      <div className="mt-2 text-xs text-orange-400/80">⚠ This problem statement is full. Try another one.</div>
                     ) : claimingId !== null && claimingId !== ps.id ? (
                       <div className="mt-2 text-xs text-blue-400/80">⏳ Selection in progress, please wait...</div>
                     ) : null}
