@@ -18,6 +18,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type TeamRow = {
   id: string;
@@ -31,6 +45,13 @@ type PsRow = {
   title?: string;
   track?: string;
   order?: number;
+  description?: string | null;
+  psNumber?: string | null;
+  difficulty?: string | null;
+  domain?: string | null;
+  problemContext?: string | null;
+  objective?: string | null;
+  expectedDeliverables?: string[] | null;
   assignedTeams?: string[];
   assignedCount?: number;
 };
@@ -51,6 +72,15 @@ const PsAdmin = () => {
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [problemStatements, setProblemStatements] = useState<PsRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [psSearch, setPsSearch] = useState('');
+  const [psTrackFilter, setPsTrackFilter] = useState<string>('all');
+  const [psDifficultyFilter, setPsDifficultyFilter] = useState<string>('all');
+  const [psDomainFilter, setPsDomainFilter] = useState<string>('all');
+  const [psAvailabilityFilter, setPsAvailabilityFilter] = useState<string>('all');
+
+  const [psDialogOpen, setPsDialogOpen] = useState(false);
+  const [selectedPs, setSelectedPs] = useState<PsRow | null>(null);
 
   const [bulkTeamsLoading, setBulkTeamsLoading] = useState(false);
   const [bulkTeamsOutput, setBulkTeamsOutput] = useState('');
@@ -83,11 +113,30 @@ const PsAdmin = () => {
 
       const psRows: PsRow[] = psSnap.docs.map((d) => {
         const data = d.data() as any;
+        const expectedDeliverablesRaw = data.expectedDeliverables;
+        const expectedDeliverables = Array.isArray(expectedDeliverablesRaw)
+          ? expectedDeliverablesRaw.filter((x: any) => typeof x === 'string')
+          : null;
         return {
           id: d.id,
           title: typeof data.title === 'string' ? data.title : undefined,
           track: typeof data.track === 'string' ? data.track : undefined,
           order: typeof data.order === 'number' ? data.order : undefined,
+          description:
+            typeof data.description === 'string' ? data.description : data.description === null ? null : undefined,
+          psNumber: typeof data.psNumber === 'string' ? data.psNumber : data.psNumber === null ? null : undefined,
+          difficulty:
+            typeof data.difficulty === 'string' ? data.difficulty : data.difficulty === null ? null : undefined,
+          domain: typeof data.domain === 'string' ? data.domain : data.domain === null ? null : undefined,
+          problemContext:
+            typeof data.problemContext === 'string'
+              ? data.problemContext
+              : data.problemContext === null
+                ? null
+                : undefined,
+          objective:
+            typeof data.objective === 'string' ? data.objective : data.objective === null ? null : undefined,
+          expectedDeliverables,
           assignedTeams: Array.isArray(data.assignedTeams) ? data.assignedTeams.filter((x: any) => typeof x === 'string') : undefined,
           assignedCount: typeof data.assignedCount === 'number' ? data.assignedCount : undefined,
         };
@@ -340,7 +389,7 @@ const PsAdmin = () => {
       }
 
       type ParsedPs = {
-        psNumber?: string;
+        psNumber: string;
         title: string;
         difficulty?: string;
         domain?: string;
@@ -355,105 +404,87 @@ const PsAdmin = () => {
         const lines = text.split('\n').map((l) => l.trim());
         const result: ParsedPs[] = [];
 
-        let currentTrack: string | undefined;
+        let currentDomainHeader: string | undefined;
         let current: ParsedPs | null = null;
-        let currentSection: 'context' | 'objective' | 'deliverables' | null = null;
+        let section: 'context' | 'objective' | 'deliverables' | null = null;
 
         const flush = () => {
-          if (!current) return;
-          const title = current.title?.trim();
-          if (!title) {
-            current = null;
-            currentSection = null;
-            return;
+          if (current?.title) {
+            current.problemContext = current.problemContext?.trim() || undefined;
+            current.objective = current.objective?.trim() || undefined;
+            current.deliverables = (current.deliverables ?? []).map((d) => d.trim()).filter(Boolean);
+            if (!current.deliverables.length) current.deliverables = undefined;
+            result.push(current);
           }
-          current.problemContext = current.problemContext?.trim() || undefined;
-          current.objective = current.objective?.trim() || undefined;
-          current.deliverables = (current.deliverables ?? []).map((d) => d.trim()).filter(Boolean);
-          if (!current.deliverables.length) current.deliverables = undefined;
-          result.push(current);
           current = null;
-          currentSection = null;
+          section = null;
         };
-
-        const sectionName = (l: string) => l.toLowerCase().replace(/\s+/g, ' ').trim();
 
         for (const line of lines) {
           if (!line) continue;
 
-          const domMatch = line.match(/^domain\s*\d+\s*:\s*(.+)$/i);
-          if (domMatch) {
-            flush();
-            currentTrack = domMatch[1].trim();
+          // DOMAIN header
+          const domainMatch = line.match(/^DOMAIN\s+\d+\s*:\s*(.+)$/i);
+          if (domainMatch) {
+            currentDomainHeader = domainMatch[1].trim();
             continue;
           }
 
-          const psMatch = line.match(/^ps\s*(\d+\.\d+)\s+(.+)$/i);
+          // PS header
+          const psMatch = line.match(/^PS\s+(\d+\.\d+)\s+(.+)$/i);
           if (psMatch) {
             flush();
             const psNumber = psMatch[1];
             const title = psMatch[2].trim();
-            const m = psNumber.match(/^(\d+)\.(\d+)$/);
-            const order = m ? Number(m[1]) * 100 + Number(m[2]) : undefined;
+            const [major, minor] = psNumber.split('.').map(Number);
+
             current = {
               psNumber,
               title,
-              track: currentTrack,
-              order,
+              domain: currentDomainHeader,
+              order: Number.isFinite(major) && Number.isFinite(minor) ? major * 100 + minor : undefined,
               deliverables: [],
             };
-            currentSection = null;
             continue;
           }
 
           if (!current) continue;
 
-          const kv = line.match(/^([A-Za-z][A-Za-z\s]+)\s*:\s*(.+)$/);
+          // Metadata
+          const kv = line.match(/^(\w[\w\s]+):\s*(.+)$/);
           if (kv) {
             const key = kv[1].toLowerCase().trim();
-            const val = kv[2].trim();
+            const value = kv[2].trim();
 
-            if (key === 'difficulty') {
-              current.difficulty = val;
-              currentSection = null;
-              continue;
-            }
-            if (key === 'domain') {
-              current.domain = val;
-              currentSection = null;
-              continue;
-            }
-          }
-
-          const sec = sectionName(line);
-          if (sec === 'problem context') {
-            currentSection = 'context';
-            current.problemContext = current.problemContext ?? '';
-            continue;
-          }
-          if (sec === 'objective') {
-            currentSection = 'objective';
-            current.objective = current.objective ?? '';
-            continue;
-          }
-          if (sec === 'expected deliverables') {
-            currentSection = 'deliverables';
-            current.deliverables = current.deliverables ?? [];
+            if (key === 'difficulty') current.difficulty = value;
+            if (key === 'domain') current.domain = value;
             continue;
           }
 
-          if (currentSection === 'context') {
+          // Section headers
+          if (/^problem context$/i.test(line)) {
+            section = 'context';
+            current.problemContext = '';
+            continue;
+          }
+          if (/^objective$/i.test(line)) {
+            section = 'objective';
+            current.objective = '';
+            continue;
+          }
+          if (/^expected deliverables$/i.test(line)) {
+            section = 'deliverables';
+            continue;
+          }
+
+          // Section content
+          if (section === 'context') {
             current.problemContext = `${current.problemContext ?? ''}${current.problemContext ? '\n' : ''}${line}`;
-            continue;
-          }
-          if (currentSection === 'objective') {
+          } else if (section === 'objective') {
             current.objective = `${current.objective ?? ''}${current.objective ? '\n' : ''}${line}`;
-            continue;
-          }
-          if (currentSection === 'deliverables') {
+          } else if (section === 'deliverables') {
             current.deliverables = current.deliverables ?? [];
             current.deliverables.push(line.replace(/^[-•]\s*/, '').trim());
-            continue;
           }
         }
 
@@ -504,7 +535,7 @@ const PsAdmin = () => {
 
       if (parsedStructured.length) {
         for (const ps of parsedStructured) {
-          const docId = ps.psNumber ? `PS-${ps.psNumber}` : makePsIdFromTitle(ps.title);
+          const docId = makePsIdFromTitle(ps.title);
           const description = buildPsDescription({
             difficulty: ps.difficulty,
             domain: ps.domain,
@@ -516,15 +547,15 @@ const PsAdmin = () => {
             docId,
             title: ps.title,
             description,
-            track: ps.track ?? 'Hackathon',
+            track: ps.domain ?? 'General',
             order: typeof ps.order === 'number' ? ps.order : null,
             extra: {
-              psNumber: ps.psNumber ?? null,
-              difficulty: ps.difficulty ?? null,
-              domain: ps.domain ?? null,
-              problemContext: ps.problemContext ?? null,
-              objective: ps.objective ?? null,
-              expectedDeliverables: ps.deliverables ?? null,
+              psNumber: ps.psNumber,
+              difficulty: ps.difficulty,
+              domain: ps.domain,
+              problemContext: ps.problemContext,
+              objective: ps.objective,
+              expectedDeliverables: ps.deliverables,
             },
           });
         }
@@ -645,6 +676,75 @@ const PsAdmin = () => {
     [problemStatements]
   );
 
+  const teamNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of teams) {
+      map.set(t.id, t.displayName ?? t.id);
+    }
+    return map;
+  }, [teams]);
+
+  const psTracks = useMemo(() => {
+    const set = new Set<string>();
+    for (const ps of problemStatements) {
+      if (ps.track && ps.track.trim()) set.add(ps.track.trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [problemStatements]);
+
+  const psDifficulties = useMemo(() => {
+    const set = new Set<string>();
+    for (const ps of problemStatements) {
+      if (ps.difficulty && ps.difficulty.trim()) set.add(ps.difficulty.trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [problemStatements]);
+
+  const psDomains = useMemo(() => {
+    const set = new Set<string>();
+    for (const ps of problemStatements) {
+      if (ps.domain && ps.domain.trim()) set.add(ps.domain.trim());
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [problemStatements]);
+
+  const filteredProblemStatements = useMemo(() => {
+    const q = psSearch.trim().toLowerCase();
+
+    const getFilled = (ps: PsRow) => ps.assignedCount ?? ps.assignedTeams?.length ?? 0;
+    const getAvailability = (ps: PsRow) => {
+      const filled = getFilled(ps);
+      if (filled <= 0) return 'free';
+      if (filled >= 3) return 'full';
+      return 'partial';
+    };
+
+    return problemStatements.filter((ps) => {
+      if (psTrackFilter !== 'all' && (ps.track ?? '').trim() !== psTrackFilter) return false;
+      if (psDifficultyFilter !== 'all' && (ps.difficulty ?? '').trim() !== psDifficultyFilter) return false;
+      if (psDomainFilter !== 'all' && (ps.domain ?? '').trim() !== psDomainFilter) return false;
+      if (psAvailabilityFilter !== 'all' && getAvailability(ps) !== psAvailabilityFilter) return false;
+
+      if (!q) return true;
+      const hay = [
+        ps.id,
+        ps.title ?? '',
+        ps.psNumber ?? '',
+        ps.track ?? '',
+        ps.domain ?? '',
+        ps.difficulty ?? '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [problemStatements, psAvailabilityFilter, psDifficultyFilter, psDomainFilter, psSearch, psTrackFilter]);
+
+  const openPsDetails = (ps: PsRow) => {
+    setSelectedPs(ps);
+    setPsDialogOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-4">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -742,8 +842,22 @@ const PsAdmin = () => {
               <CardTitle className="text-white">Bulk Upload Problem Statements (DOCX)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-sm text-gray-300">
-                Upload a <span className="font-semibold">.docx</span> where each problem statement is separated by a blank line. The first line becomes the title; remaining lines become the description.
+              <div className="text-sm text-gray-300 space-y-2">
+                <p>Upload a <span className="font-semibold">.docx</span> file with the following format:</p>
+                <div className="bg-gray-900/70 rounded p-3 text-xs font-mono space-y-1">
+                  <div><span className="text-purple-400">DOMAIN X:</span> Domain Name</div>
+                  <div><span className="text-blue-400">PS X.Y</span> Problem Statement Title</div>
+                  <div><span className="text-emerald-400">Difficulty:</span> Easy|Medium|Hard</div>
+                  <div><span className="text-emerald-400">Domain:</span> Domain Name</div>
+                  <div className="pt-1"><span className="text-yellow-400">Problem Context</span></div>
+                  <div className="pl-2 text-gray-400">[Description of background and context]</div>
+                  <div className="pt-1"><span className="text-yellow-400">Objective</span></div>
+                  <div className="pl-2 text-gray-400">[What needs to be achieved]</div>
+                  <div className="pt-1"><span className="text-yellow-400">Expected Deliverables</span></div>
+                  <div className="pl-2 text-gray-400">- Deliverable 1</div>
+                  <div className="pl-2 text-gray-400">- Deliverable 2</div>
+                </div>
+                <p className="text-xs text-gray-400">See <span className="font-semibold">problem-statements-format-example.txt</span> for detailed examples.</p>
               </div>
               <Input
                 type="file"
@@ -783,13 +897,114 @@ const PsAdmin = () => {
           <CardContent className="space-y-6">
             <div>
               <div className="text-white font-semibold mb-2">Problem Statements</div>
+
+              <div className="grid gap-3 lg:grid-cols-5 md:grid-cols-2">
+                <Input
+                  value={psSearch}
+                  onChange={(e) => setPsSearch(e.target.value)}
+                  placeholder="Search by PS id/title/domain…"
+                  className="bg-gray-900/50 border-gray-700 text-white lg:col-span-2"
+                />
+
+                <Select value={psTrackFilter} onValueChange={setPsTrackFilter}>
+                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Track" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All tracks</SelectItem>
+                    {psTracks.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={psDifficultyFilter} onValueChange={setPsDifficultyFilter}>
+                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All difficulties</SelectItem>
+                    {psDifficulties.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={psAvailabilityFilter} onValueChange={setPsAvailabilityFilter}>
+                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Availability" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="free">Free (0/3)</SelectItem>
+                    <SelectItem value="partial">Available (1-2/3)</SelectItem>
+                    <SelectItem value="full">Full (3/3)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-3 mt-3 md:grid-cols-2">
+                <Select value={psDomainFilter} onValueChange={setPsDomainFilter}>
+                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Domain" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All domains</SelectItem>
+                    {psDomains.map((d) => (
+                      <SelectItem key={d} value={d}>
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setPsSearch('');
+                    setPsTrackFilter('all');
+                    setPsDifficultyFilter('all');
+                    setPsDomainFilter('all');
+                    setPsAvailabilityFilter('all');
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
+
+              <div className="mt-3 text-xs text-gray-400">Showing {filteredProblemStatements.length} of {problemStatements.length}</div>
+
               <div className="grid gap-3 md:grid-cols-2">
-                {problemStatements.map((ps) => (
-                  <div key={ps.id} className="rounded-lg border border-gray-700 bg-gray-900/40 p-4">
+                {filteredProblemStatements.map((ps) => (
+                  <div
+                    key={ps.id}
+                    onClick={() => openPsDetails(ps)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openPsDetails(ps);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    className="cursor-pointer text-left rounded-lg border border-gray-700 bg-gray-900/40 p-4 hover:bg-gray-900/60 hover:border-purple-500/40 transition"
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="text-white font-semibold truncate">{ps.title ?? ps.id}</div>
-                        <div className="text-xs text-gray-400">{ps.track ?? 'Hackathon'}{typeof ps.order === 'number' ? ` • #${ps.order}` : ''}</div>
+                        <div className="text-white font-semibold leading-snug">
+                          <span className="text-gray-400 mr-2">{ps.id}</span>
+                          {ps.title ?? ps.id}
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          <Badge variant="secondary">{ps.track ?? 'Hackathon'}</Badge>
+                          {ps.difficulty ? <Badge className="bg-blue-600">{ps.difficulty}</Badge> : null}
+                          {ps.domain ? <Badge className="bg-emerald-600">{ps.domain}</Badge> : null}
+                          {typeof ps.order === 'number' ? <Badge variant="outline">#{ps.order}</Badge> : null}
+                        </div>
                       </div>
                       {(() => {
                         const filled = ps.assignedCount ?? ps.assignedTeams?.length ?? 0;
@@ -798,11 +1013,22 @@ const PsAdmin = () => {
                         return <Badge className="bg-green-600">Free</Badge>;
                       })()}
                     </div>
+
+                    {ps.description ? (
+                      <div className="mt-3 text-sm text-gray-300 max-h-16 overflow-hidden">
+                        {ps.description}
+                      </div>
+                    ) : null}
+
                     <div className="mt-3 flex justify-end">
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => resetAssignment(ps.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void resetAssignment(ps.id);
+                        }}
                         disabled={(ps.assignedCount ?? ps.assignedTeams?.length ?? 0) === 0}
                       >
                         Reset
@@ -839,6 +1065,78 @@ const PsAdmin = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={psDialogOpen} onOpenChange={setPsDialogOpen}>
+        <DialogContent className="bg-gray-950 text-white border-gray-700 max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white">{selectedPs?.title ?? selectedPs?.id ?? 'Problem Statement'}</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {selectedPs?.id ? `ID: ${selectedPs.id}` : null}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedPs ? (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">{selectedPs.track ?? 'Hackathon'}</Badge>
+                {selectedPs.psNumber ? <Badge variant="outline">PS {selectedPs.psNumber}</Badge> : null}
+                {selectedPs.difficulty ? <Badge className="bg-blue-600">{selectedPs.difficulty}</Badge> : null}
+                {selectedPs.domain ? <Badge className="bg-emerald-600">{selectedPs.domain}</Badge> : null}
+                {typeof selectedPs.order === 'number' ? <Badge variant="outline">Order #{selectedPs.order}</Badge> : null}
+              </div>
+
+              <div className="rounded-lg border border-gray-800 bg-gray-900/30 p-4">
+                <div className="text-sm text-gray-300">
+                  Teams selected: <span className="text-white font-semibold">{selectedPs.assignedCount ?? selectedPs.assignedTeams?.length ?? 0}/3</span>
+                </div>
+                {selectedPs.assignedTeams?.length ? (
+                  <div className="mt-2 grid gap-1">
+                    {selectedPs.assignedTeams.map((teamKey) => (
+                      <div key={teamKey} className="text-sm text-gray-200">
+                        - {teamNameById.get(teamKey) ?? teamKey} <span className="text-xs text-gray-500">({teamKey})</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-sm text-gray-400">No teams assigned yet.</div>
+                )}
+              </div>
+
+              {selectedPs.problemContext ? (
+                <div className="space-y-1">
+                  <div className="text-white font-semibold">Problem Context</div>
+                  <div className="text-sm text-gray-200 whitespace-pre-wrap">{selectedPs.problemContext}</div>
+                </div>
+              ) : null}
+
+              {selectedPs.objective ? (
+                <div className="space-y-1">
+                  <div className="text-white font-semibold">Objective</div>
+                  <div className="text-sm text-gray-200 whitespace-pre-wrap">{selectedPs.objective}</div>
+                </div>
+              ) : null}
+
+              {selectedPs.expectedDeliverables?.length ? (
+                <div className="space-y-1">
+                  <div className="text-white font-semibold">Expected Deliverables</div>
+                  <ul className="list-disc pl-5 text-sm text-gray-200 space-y-1">
+                    {selectedPs.expectedDeliverables.map((d, i) => (
+                      <li key={`${selectedPs.id}-deliv-${i}`}>{d}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {selectedPs.description ? (
+                <div className="space-y-1">
+                  <div className="text-white font-semibold">Full Text</div>
+                  <div className="text-sm text-gray-200 whitespace-pre-wrap">{selectedPs.description}</div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

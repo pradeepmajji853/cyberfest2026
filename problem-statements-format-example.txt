@@ -1,0 +1,200 @@
+PROBLEM STATEMENTS FORMAT GUIDE
+================================
+
+This document provides the proper format for problem statements that can be bulk uploaded to the system.
+The system supports structured domain-based format with proper sections.
+
+FORMAT SPECIFICATION:
+--------------------
+
+1. DOMAIN HEADER (Optional but recommended):
+   DOMAIN X: Domain Name
+   
+   Where X is a number (1, 2, 3, etc.) and Domain Name is the category
+
+2. PROBLEM STATEMENT HEADER:
+   PS X.Y Title of the Problem Statement
+   
+   Where X.Y is the problem statement number (e.g., 1.1, 1.2, 2.1, etc.)
+   The number before the decimal is typically the domain number
+   The number after the decimal is the sequence within that domain
+
+3. METADATA FIELDS (Each on its own line):
+   Difficulty: Easy|Medium|Hard
+   Domain: Domain Name (optional if already specified in DOMAIN header)
+
+4. REQUIRED SECTIONS:
+   
+   Problem Context
+   [Description of the background and context of the problem]
+   
+   Objective
+   [Clear statement of what needs to be achieved]
+   
+   Expected Deliverables
+   - Deliverable 1
+   - Deliverable 2
+   - Deliverable 3
+
+
+COMPLETE EXAMPLES:
+==================
+
+DOMAIN 1: Cybersecurity
+
+PS 1.1 Secure Authentication System
+Difficulty: Medium
+Domain: Cybersecurity
+
+Problem Context
+Modern web applications face increasing threats from credential-based attacks including password spraying, credential stuffing, and brute force attempts. Traditional username-password authentication systems are vulnerable to various attack vectors, and many organizations struggle to implement robust authentication mechanisms that balance security with user experience.
+
+Objective
+Design and implement a secure multi-factor authentication system that protects against common authentication attacks while maintaining usability. The solution should incorporate industry best practices for password security, session management, and account protection mechanisms.
+
+Expected Deliverables
+- Working authentication system with multi-factor authentication support
+- Implementation of rate limiting and account lockout mechanisms
+- Security analysis document detailing protection against common attacks
+- User documentation and setup guide
+- Demonstration of the system's resilience against simulated attacks
+
+
+PS 1.2 Network Intrusion Detection System
+Difficulty: Hard
+Domain: Cybersecurity
+
+Problem Context
+Network security teams need real-time visibility into network traffic to detect and respond to potential security incidents. Traditional signature-based intrusion detection systems often fail to identify new or evolving attack patterns, leaving networks vulnerable to zero-day exploits and advanced persistent threats.
+
+Objective
+Develop an intelligent network intrusion detection system that uses machine learning techniques to identify anomalous network behavior. The system should be capable of learning normal network patterns and alerting on deviations that may indicate security incidents.
+
+Expected Deliverables
+- Functional IDS prototype with machine learning capabilities
+- Dataset of normal and anomalous network traffic patterns
+- Performance metrics including detection rates and false positive analysis
+- Alert management dashboard
+- Technical documentation and deployment guide
+
+
+DOMAIN 2: Artificial Intelligence
+
+PS 2.1 Intelligent Healthcare Diagnosis Assistant
+Difficulty: Hard
+Domain: Artificial Intelligence
+
+Problem Context
+Healthcare providers face challenges in accurately diagnosing diseases, especially in resource-constrained settings where access to specialists is limited. Early and accurate diagnosis is crucial for effective treatment, but manual analysis of medical data is time-consuming and prone to human error. There is a need for AI-powered tools that can assist medical professionals in making faster and more accurate diagnostic decisions.
+
+Objective
+Create an AI-based diagnostic assistant that can analyze patient symptoms, medical history, and test results to suggest potential diagnoses and recommend further tests. The system should provide explanations for its suggestions to help medical professionals understand the reasoning behind each recommendation.
+
+Expected Deliverables
+- AI model trained on medical datasets with high accuracy metrics
+- User-friendly interface for inputting patient data
+- Explanation mechanism for AI predictions (interpretable AI)
+- Validation results comparing AI suggestions with actual diagnoses
+- Documentation on model architecture, training process, and ethical considerations
+
+
+PS 2.2 Smart Traffic Management System
+Difficulty: Medium
+Domain: Artificial Intelligence
+
+Problem Context
+Urban areas face increasing traffic congestion leading to wasted time, increased pollution, and economic losses. Traditional traffic management systems with fixed timing patterns cannot adapt to real-time traffic conditions, resulting in inefficient traffic flow during peak hours and special events.
+
+Objective
+Develop an AI-powered traffic management system that can analyze real-time traffic data from multiple sources and dynamically adjust traffic signal timings to optimize traffic flow. The system should be able to predict traffic patterns and proactively manage congestion.
+
+Expected Deliverables
+- Working prototype of the AI traffic management system
+- Traffic simulation demonstrating improvements in traffic flow
+- Real-time traffic prediction model with accuracy metrics
+- Dashboard for traffic monitoring and control
+- Performance comparison with traditional fixed-timing systems
+
+
+DOMAIN 3: Web Development
+
+PS 3.1 Collaborative Project Management Platform
+Difficulty: Medium
+Domain: Web Development
+
+Problem Context
+Remote teams struggle with coordinating project tasks, tracking progress, and maintaining effective communication across different time zones. Existing project management tools often lack integration capabilities or are too complex for small to medium-sized teams, leading to poor adoption and continued reliance on fragmented communication tools.
+
+Objective
+Build a modern, real-time collaborative project management web application that enables teams to plan, track, and execute projects efficiently. The platform should offer intuitive task management, real-time updates, and seamless team communication features.
+
+Expected Deliverables
+- Fully functional web application with responsive design
+- Real-time collaboration features using WebSocket technology
+- User authentication and authorization system
+- Task management with drag-and-drop interface
+- API documentation for potential third-party integrations
+
+
+PS 3.2 E-Commerce Analytics Dashboard
+Difficulty: Easy
+Domain: Web Development
+
+Problem Context
+Small and medium-sized e-commerce businesses lack sophisticated analytics tools to understand their sales performance, customer behavior, and inventory trends. Without proper data visualization and insights, business owners struggle to make informed decisions about pricing, marketing, and inventory management.
+
+Objective
+Create a comprehensive analytics dashboard for e-commerce platforms that provides visual insights into sales metrics, customer behavior, and inventory status. The dashboard should present complex data in an easily understandable format with interactive visualizations.
+
+Expected Deliverables
+- Web-based analytics dashboard with interactive charts and graphs
+- Integration with common e-commerce platforms or mock data source
+- Real-time data updates and filtering capabilities
+- Export functionality for reports in multiple formats
+- Mobile-responsive design for on-the-go access
+
+
+FALLBACK FORMAT (Simple Format):
+================================
+
+If the structured format above is not used, the system can also parse a simpler format where:
+- Problem statements are separated by blank lines
+- Each PS starts with a number followed by the title
+- Remaining lines are treated as the description
+
+Example:
+
+1. Authentication System
+Build a secure authentication system with multi-factor authentication.
+Should include password hashing, session management, and rate limiting.
+
+2. Traffic Management
+Develop an AI-powered traffic management system.
+Must analyze real-time traffic data and optimize signal timings.
+
+
+BEST PRACTICES:
+===============
+
+1. Always use the structured format with DOMAIN headers for better organization
+2. Include all three main sections: Problem Context, Objective, and Expected Deliverables
+3. Be specific in the Objective section about what needs to be achieved
+4. List concrete, measurable deliverables
+5. Assign appropriate difficulty levels (Easy, Medium, Hard)
+6. Use consistent numbering (X.Y format where X is domain number)
+7. Ensure Problem Context provides sufficient background information
+8. Make objectives clear and actionable
+9. Include 3-5 expected deliverables per problem statement
+10. Keep formatting consistent throughout the document
+
+
+NOTES:
+======
+
+- The system will automatically extract metadata and organize problem statements by domain
+- Problem statements are assigned unique IDs based on their titles
+- The order number is derived from the PS number (X.Y format)
+- All sections support multi-line content
+- Deliverables can use dashes (-) or bullets (•) as prefixes
+- Empty sections can be omitted but are not recommended
+- The system will merge all metadata into a comprehensive description field
