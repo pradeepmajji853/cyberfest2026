@@ -1,4 +1,15 @@
 {
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "X-Integrity-Token", "value": "66:71:74:60:7a:70:60:7b:62:7e:60:25:31:6c:25:77:57:27:6b:62:25:66:7c:27:35:66:6b" }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

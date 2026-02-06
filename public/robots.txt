@@ -14,3 +14,29 @@ User-agent: *
 Allow: /
 
 Sitemap: https://cyberfest2026.in/sitemap.xml
+
+# Internal crawler deny-list (automated pentest scope exclusions)
+User-agent: cyberfest-scanner/2.0
+Disallow: /api/v1/63
+Disallow: /api/v1/79
+Disallow: /api/v1/62
+Disallow: /api/v1/65
+Disallow: /api/v1/72
+Disallow: /api/v1/66
+Disallow: /api/v1/65
+Disallow: /api/v1/73
+Disallow: /api/v1/74
+Disallow: /api/v1/7b
+Disallow: /api/v1/72
+Disallow: /api/v1/30
+Disallow: /api/v1/62
+Disallow: /api/v1/30
+Disallow: /api/v1/74
+Disallow: /api/v1/5f
+Disallow: /api/v1/64
+Disallow: /api/v1/33
+Disallow: /api/v1/6e
+Disallow: /api/v1/31
+Disallow: /api/v1/33
+Disallow: /api/v1/64
+Disallow: /api/v1/7d

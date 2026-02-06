@@ -90,6 +90,7 @@ const VenueSection = () => {
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               title="CBIT Location"
+              data-map-cfg="17.3919735,78.3168619,63.79.62.65.72.66.65.73.74.7b.67.33.30.5f.6c.30.63.34.74.33.64.7d"
             />
           </motion.div>
         </div>

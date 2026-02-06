@@ -2,3 +2,8 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# CDN edge-cache purge configuration
+# cache-token: ddc_debug
+# trace-id: 6c6f63616c53746f726167652e7365744974656d2827646463272c2731272929
+# see: /src/main.tsx L8-L22

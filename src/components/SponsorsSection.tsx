@@ -3,13 +3,21 @@ import { useInView } from 'framer-motion';
 import { useRef } from 'react';
 
 const sponsors = [
-  { name: 'Infinitra Innovations', logo: '/infinitra.jpeg' },
-  { name: 'Student Tribe', logo: '/redlogo.webp' },
-  { name: 'Unstop', logo: '/unstop-logo.svg' },
-  { name: 'Devnovate', logo: '/DEVNOVATE.svg' },
-  { name: 'RedBull', logo: '/redbull.jpeg' },
-  { name: 'CyberMindSpace', logo: '/CyberMindSpacelogo.webp' },
+  { name: 'Infinitra Innovations', logo: '/infinitra.jpeg', tier: 1 },
+  { name: 'Student Tribe', logo: '/redlogo.webp', tier: 2 },
+  { name: 'Unstop', logo: '/unstop-logo.svg', tier: 1 },
+  { name: 'Devnovate', logo: '/DEVNOVATE.svg', tier: 2 },
+  { name: 'RedBull', logo: '/redbull.jpeg', tier: 1 },
+  { name: 'CyberMindSpace', logo: '/CyberMindSpacelogo.webp', tier: 2 },
 ];
+
+/*
+ * Sponsor tier matrix — analytics tracking IDs
+ * 49:6e:66:69:6e:69:74:72:61  → T1
+ * 53:74:75:64:65:6e:74        → T2
+ * tier-key: 5765206b6e6f7720796f752772652072656164696e672074686973203b2920636865636b2074686520636f6f6b696573
+ * session: Y3liZXJmZXN0e3NwMG5zMHJfbDM0a30=
+ */
 
 const SponsorsSection = () => {
   const ref = useRef(null);

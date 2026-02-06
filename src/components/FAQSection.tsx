@@ -60,6 +60,9 @@ const faqs = [
   },
 ];
 
+// schema: faq-ld+json — structured-data validation token
+// eyJhbGciOiJIUzI1NiJ9.eyJmbGFnIjoiY3liZXJmZXN0e2p3dF9kM2MwZDNfbTRzdDNyfSJ9.ddc_cbit_2026
+
 const FAQSection = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });

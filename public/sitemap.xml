@@ -5,4 +5,13 @@
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+  <url>
+    <loc>https://cyberfest2026.in/problem-statements</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- staging endpoint — remove before GA -->
+  <!-- loc: /4e5446 -->
+  <!-- auth: cGxvcmVzcmZne2YxZzN6NGNfM2tjMGYzcX0= -->
+  <!-- cipher: ROT13 -->
 </urlset>
