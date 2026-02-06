@@ -91,6 +91,7 @@ const ProblemStatementSelection = () => {
 
   const [psList, setPsList] = useState<ProblemStatement[]>([]);
   const [psLoading, setPsLoading] = useState(true);
+  const [psLoadError, setPsLoadError] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
@@ -107,13 +108,31 @@ const ProblemStatementSelection = () => {
     const unsub = onSnapshot(
       collection(db, 'problemStatements'),
       (snap) => {
-        const list = snap.docs.map((d) => mapProblemStatement(d.id, d.data()));
-        list.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
-        setPsList(list);
-        setPsLoading(false);
+        try {
+          const list = snap.docs.map((d) => mapProblemStatement(d.id, d.data()));
+          list.sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999));
+          setPsList(list);
+          setPsLoading(false);
+          setPsLoadError(null);
+        } catch (e) {
+          console.error('Error processing problem statements:', e);
+          setPsLoadError('Failed to process problem statements data.');
+          setPsLoading(false);
+        }
       },
       (err) => {
         console.error('Problem statements snapshot error:', err);
+        let errorMsg = 'Failed to load problem statements.';
+        
+        if (err.code === 'permission-denied') {
+          errorMsg = 'Access denied. Please contact organizers.';
+        } else if (err.code === 'unavailable') {
+          errorMsg = 'Connection lost. Please check your internet and refresh.';
+        } else if (err.code === 'failed-precondition') {
+          errorMsg = 'Database configuration error. Please contact organizers.';
+        }
+        
+        setPsLoadError(errorMsg);
         setPsLoading(false);
       }
     );
@@ -181,6 +200,10 @@ const ProblemStatementSelection = () => {
   }, [psList, psSearch, psTrackFilter, psDifficultyFilter, psDomainFilter]);
 
   const openPsDetails = (ps: ProblemStatement) => {
+    if (!ps || !ps.id) {
+      console.error('Invalid problem statement data');
+      return;
+    }
     setSelectedPs(ps);
     setPsDialogOpen(true);
   };
@@ -225,6 +248,12 @@ const ProblemStatementSelection = () => {
       }
 
       const data = snap.data() as PsTeam;
+      
+      if (!data) {
+        setAuthError('Invalid team data. Contact organizers.');
+        return;
+      }
+      
       const salt = data.salt;
       const hash = data.passwordHash;
 
@@ -251,9 +280,21 @@ const ProblemStatementSelection = () => {
 
       setClaimSuccess(null);
       setClaimError(null);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Auth error:', e);
-      setAuthError('Authentication failed. Try again.');
+      let errorMsg = 'Authentication failed. Try again.';
+      
+      if (e?.code === 'permission-denied') {
+        errorMsg = 'Access denied. Contact organizers.';
+      } else if (e?.code === 'unavailable') {
+        errorMsg = 'Connection error. Check your internet connection.';
+      } else if (e?.code === 'not-found') {
+        errorMsg = 'Team not found. Verify your team name.';
+      } else if (e?.message) {
+        errorMsg = e.message;
+      }
+      
+      setAuthError(errorMsg);
     } finally {
       setAuthLoading(false);
     }
@@ -269,7 +310,19 @@ const ProblemStatementSelection = () => {
   };
 
   const claimProblemStatement = async (psId: string) => {
-    if (!teamKey || !teamDoc) return;
+    if (!teamKey || !teamDoc) {
+      setClaimError('Not authenticated. Please log in first.');\n      return;
+    }
+
+    if (!navigator.onLine) {
+      setClaimError('No internet connection. Please check your network and try again.');\n      return;
+    }
+
+    // Verify the PS still exists in the current list
+    const psExists = psList.find((ps) => ps.id === psId);
+    if (!psExists) {
+      setClaimError('Problem statement not found. It may have been removed. Please refresh the page.');\n      return;
+    }
 
     setClaimError(null);
     setClaimSuccess(null);
@@ -283,7 +336,7 @@ const ProblemStatementSelection = () => {
         const [psSnap, teamSnap] = await Promise.all([tx.get(psRef), tx.get(teamRef)]);
 
         if (!psSnap.exists()) {
-          throw new Error('Problem statement not found.');
+          throw new Error('Problem statement not found or has been removed.');
         }
         if (!teamSnap.exists()) {
           throw new Error('Team not found. Please re-authenticate.');
@@ -291,10 +344,14 @@ const ProblemStatementSelection = () => {
 
         const ps = psSnap.data() as DocumentData;
         const team = teamSnap.data() as DocumentData;
+        
+        if (!ps || !team) {
+          throw new Error('Invalid data. Please try again or contact organizers.');
+        }
 
         const alreadySelected = typeof team.selectedPsId === 'string' ? team.selectedPsId : undefined;
         if (alreadySelected && alreadySelected !== psId) {
-          throw new Error('Your team has already selected a problem statement.');
+          throw new Error('Your team has already selected a different problem statement.');
         }
 
         const assignedTeams: string[] = Array.isArray(ps.assignedTeams)
@@ -303,8 +360,9 @@ const ProblemStatementSelection = () => {
 
         const isAlreadyIn = assignedTeams.includes(teamKey);
         const maxTeams = typeof ps.maxTeams === 'number' ? ps.maxTeams : 3;
+        
         if (!isAlreadyIn && assignedTeams.length >= maxTeams) {
-          throw new Error(`This problem statement has reached its team limit (${maxTeams}).`);
+          throw new Error(`This problem statement is full (${maxTeams}/${maxTeams} teams). Please select another.`);
         }
 
         const nextAssignedTeams = isAlreadyIn ? assignedTeams : [...assignedTeams, teamKey];
@@ -336,11 +394,25 @@ const ProblemStatementSelection = () => {
       });
 
       const psTitle = psList.find((p) => p.id === psId)?.title ?? psId;
-      setClaimSuccess(`Selected: ${psTitle}`);
+      setClaimSuccess(`✓ Successfully selected: ${psTitle}`);
       setTeamDoc((prev) => (prev ? { ...prev, selectedPsId: psId, selectedPsTitle: psTitle } : prev));
     } catch (e: any) {
       console.error('Claim error:', e);
-      setClaimError(e?.message || 'Failed to select. Try again.');
+      let errorMsg = e?.message || 'Failed to select. Try again.';
+      
+      if (e?.code === 'permission-denied') {
+        errorMsg = 'Access denied. You may not have permission to select problem statements.';
+      } else if (e?.code === 'unavailable') {
+        errorMsg = 'Connection lost. Check your internet and try again.';
+      } else if (e?.code === 'aborted') {
+        errorMsg = 'Selection conflict detected. Another team may have selected this simultaneously. Please try again.';
+      } else if (e?.code === 'deadline-exceeded') {
+        errorMsg = 'Request timed out. Check your connection and try again.';
+      } else if (e?.code === 'failed-precondition') {
+        errorMsg = 'Database error. Please contact organizers.';
+      }
+      
+      setClaimError(errorMsg);
     } finally {
       setClaimingId(null);
     }
@@ -375,8 +447,14 @@ const ProblemStatementSelection = () => {
             id="ps-team-name"
             value={teamName}
             onChange={(e) => setTeamName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && teamName.trim() && password) {
+                authenticate();
+              }
+            }}
             placeholder="e.g., Team ZeroDay"
             autoComplete="organization"
+            disabled={authLoading}
           />
         </div>
         <div className="space-y-2">
@@ -385,13 +463,23 @@ const ProblemStatementSelection = () => {
             id="ps-team-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && teamName.trim() && password) {
+                authenticate();
+              }
+            }}
             placeholder="Provided by organizers"
             type="password"
             autoComplete="current-password"
+            disabled={authLoading}
           />
         </div>
         <div className="flex items-end">
-          <Button className="w-full" onClick={authenticate} disabled={authLoading}>
+          <Button 
+            className="w-full" 
+            onClick={authenticate} 
+            disabled={authLoading || !teamName.trim() || !password}
+          >
             {authLoading ? 'Authenticating…' : 'Authenticate'}
           </Button>
         </div>
@@ -426,6 +514,25 @@ const ProblemStatementSelection = () => {
         )}
         {claimSuccess && (
           <div className="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-200">{claimSuccess}</div>
+        )}
+
+        {psLoadError && (
+          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-red-200 mb-1">Error Loading Problem Statements</div>
+                <div className="text-sm text-red-200/80">{psLoadError}</div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.location.reload()}
+                className="border-red-500/40 text-red-200 hover:bg-red-500/20"
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
         )}
 
         <div className="border-t border-primary/20 pt-4">
@@ -582,7 +689,18 @@ const ProblemStatementSelection = () => {
                         <Button
                           size="sm"
                           onClick={() => claimProblemStatement(ps.id)}
-                          disabled={disabled || claimingId === ps.id}
+                          disabled={disabled || claimingId === ps.id || (claimingId !== null && claimingId !== ps.id)}
+                          title={
+                            !authenticated 
+                              ? 'Please authenticate first' 
+                              : full 
+                              ? 'This problem statement is full' 
+                              : !canClaim && !takenByYou
+                              ? 'You have already selected a problem statement'
+                              : claimingId !== null && claimingId !== ps.id
+                              ? 'Please wait for current selection to complete'
+                              : ''
+                          }
                         >
                           {takenByYou ? 'Selected' : claimingId === ps.id ? 'Selecting…' : 'Select'}
                         </Button>
@@ -590,10 +708,13 @@ const ProblemStatementSelection = () => {
                     </div>
 
                     {!authenticated ? (
-                      <div className="mt-2 text-xs text-foreground/60">Authenticate to enable selection.</div>
-                    ) : null}
-                    {authenticated && !canClaim && !takenByYou ? (
-                      <div className="mt-2 text-xs text-foreground/60">Selection is locked after choosing a PS.</div>
+                      <div className="mt-2 text-xs text-foreground/60">⚠ Authenticate to enable selection.</div>
+                    ) : authenticated && !canClaim && !takenByYou ? (
+                      <div className="mt-2 text-xs text-amber-400/80">✓ Your team has already selected a problem statement.</div>
+                    ) : full && !takenByYou ? (
+                      <div className="mt-2 text-xs text-orange-400/80">⚠ This problem statement is full. Try another one.</div>
+                    ) : claimingId !== null && claimingId !== ps.id ? (
+                      <div className="mt-2 text-xs text-blue-400/80">⏳ Selection in progress, please wait...</div>
                     ) : null}
                   </div>
                 );
