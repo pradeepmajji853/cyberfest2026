@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import cyberfestLogo from '@/assets/cyberfest-logo.png';
 import RegistrationDialog from './RegistrationDialog';
 
@@ -8,6 +9,7 @@ const navItems = [
   { name: 'Home', href: '#home' },
   { name: 'About', href: '#about' },
   { name: 'Events', href: '#events' },
+  { name: 'Problem Statements', href: '/problem-statements' },
   { name: 'Schedule', href: '#schedule' },
   { name: 'Committee', href: '#committee' },
   { name: 'Venue', href: '#venue' },
@@ -20,6 +22,8 @@ interface NavbarProps {
 }
 
 const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
@@ -39,9 +43,8 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
   const shouldShowNavbar = showAfterIntro;
   const isFilled = isScrolled || isMobileMenuOpen;
 
-  const handleMobileNavClick = (href: string) => {
-    setIsMobileMenuOpen(false);
-    const targetId = href.replace('#', '');
+  const scrollToHash = (hashHref: string) => {
+    const targetId = hashHref.replace('#', '');
     const target = document.getElementById(targetId);
 
     requestAnimationFrame(() => {
@@ -50,9 +53,31 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
         const top = target.getBoundingClientRect().top + window.scrollY - navOffset;
         window.scrollTo({ top, behavior: 'smooth' });
       } else {
-        window.location.hash = href;
+        window.location.hash = hashHref;
       }
     });
+  };
+
+  const handleNavClick = (href: string) => {
+    setIsMobileMenuOpen(false);
+
+    if (href.startsWith('#')) {
+      if (location.pathname !== '/') {
+        navigate('/');
+        // Wait a tick for the home page to render, then scroll.
+        setTimeout(() => scrollToHash(href), 150);
+      } else {
+        scrollToHash(href);
+      }
+      return;
+    }
+
+    navigate(href);
+  };
+
+  const handleMobileNavClick = (href: string) => {
+    setIsMobileMenuOpen(false);
+    handleNavClick(href);
   };
 
   return (
@@ -69,25 +94,26 @@ const Navbar = ({ showAfterIntro = true }: NavbarProps) => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <a href="#home" className="flex items-center">
+          <Link to="/" className="flex items-center" onClick={() => setIsMobileMenuOpen(false)}>
             <img
               src={cyberfestLogo}
               alt="CyberFest 2026"
               className="h-10 md:h-12 object-contain drop-shadow-[0_0_10px_rgba(0,71,171,0.3)]"
             />
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-6">
             {navItems.map((item) => (
-              <a
+              <button
                 key={item.name}
-                href={item.href}
+                onClick={() => handleNavClick(item.href)}
                 className="font-rajdhani text-lg font-medium text-foreground/80 hover:text-primary transition-colors relative group"
+                type="button"
               >
                 {item.name}
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
-              </a>
+              </button>
             ))}
           </div>
 

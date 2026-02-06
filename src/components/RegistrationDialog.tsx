@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import qrPayment from '@/assets/qrpayment.jpeg';
 
 // HARD CLOSE REGISTRATIONS - Set to true to close registrations
-const REGISTRATIONS_CLOSED = true;
+const REGISTRATIONS_CLOSED = false;
 
 interface RegistrationDialogProps {
   isOpen: boolean;
@@ -114,7 +114,7 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
         member.phoneNumber &&
         member.rollNumber &&
         member.yearOfStudy &&
-        (member.collegeType === 'Other' && member.customCollege) &&
+        (member.collegeType === 'CBIT' || (member.collegeType === 'Other' && member.customCollege)) &&
         (member.degreeType !== 'Other' || member.customDegree) &&
         (member.branch && (member.branch !== 'Other' || member.customBranch))
     );
@@ -172,10 +172,6 @@ const RegistrationDialog = ({ isOpen, onClose }: RegistrationDialogProps) => {
   };
 
   const handleSubmit = async () => {
-    if (teamMembers.some((member) => member.collegeType === 'CBIT')) {
-      alert('Registrations are closed for CBIT students. Please select "Other" and enter your college name.');
-      return;
-    }
     if (!paymentScreenshot || !transactionId) {
       alert('Please upload payment screenshot and enter transaction ID');
       return;
@@ -781,11 +777,6 @@ const DetailsForm = ({
                 <option value="CBIT">CBIT</option>
                 <option value="Other">Other</option>
               </select>
-              {member.collegeType === 'CBIT' && (
-                <p className="mt-2 text-sm text-yellow-300">
-                  Registrations are closed for CBIT students. Please select Other.
-                </p>
-              )}
             </div>
 
             {/* Custom College */}
