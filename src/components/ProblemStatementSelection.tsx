@@ -41,6 +41,9 @@ type ProblemStatement = {
   expectedDeliverables?: string[] | null;
   order?: number;
   assignedTeams: string[];
+  isSpecialTrack?: boolean;
+  pdfLink?: string | null;
+  maxTeams?: number;
 };
 
 type PsTeam = {
@@ -73,6 +76,9 @@ const mapProblemStatement = (id: string, data: DocumentData): ProblemStatement =
   assignedTeams: Array.isArray(data.assignedTeams)
     ? data.assignedTeams.filter((x: unknown): x is string => typeof x === 'string')
     : [],
+  isSpecialTrack: typeof data.isSpecialTrack === 'boolean' ? data.isSpecialTrack : undefined,
+  pdfLink: asString(data.pdfLink) ?? (data.pdfLink === null ? null : undefined),
+  maxTeams: safeNumber(data.maxTeams),
 });
 
 const ProblemStatementSelection = () => {
@@ -90,10 +96,9 @@ const ProblemStatementSelection = () => {
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
 
   const [psSearch, setPsSearch] = useState('');
-  const [psTrackFilter, setPsTrackFilter] = useState<string>('all');
+  const [psTrackFilter, setPsTrackFilter] = useState<'generic' | 'special'>('generic');
   const [psDifficultyFilter, setPsDifficultyFilter] = useState<string>('all');
   const [psDomainFilter, setPsDomainFilter] = useState<string>('all');
-  const [psAvailabilityFilter, setPsAvailabilityFilter] = useState<string>('all');
 
   const [psDialogOpen, setPsDialogOpen] = useState(false);
   const [selectedPs, setSelectedPs] = useState<ProblemStatement | null>(null);
@@ -116,54 +121,64 @@ const ProblemStatementSelection = () => {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    // Reset filters when switching tracks
+    setPsDifficultyFilter('all');
+    setPsDomainFilter('all');
+  }, [psTrackFilter]);
+
   const authenticated = !!teamKey;
 
   const selectedPsId = teamDoc?.selectedPsId;
 
-  const psTracks = useMemo(() => {
-    const set = new Set<string>();
-    for (const ps of psList) {
-      if (ps.track && ps.track.trim()) set.add(ps.track.trim());
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  const genericPsList = useMemo(() => {
+    return psList.filter((ps) => !ps.isSpecialTrack);
   }, [psList]);
 
   const psDifficulties = useMemo(() => {
     const set = new Set<string>();
-    for (const ps of psList) {
+    for (const ps of genericPsList) {
       if (ps.difficulty && ps.difficulty.trim()) set.add(ps.difficulty.trim());
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [psList]);
+  }, [genericPsList]);
 
   const psDomains = useMemo(() => {
     const set = new Set<string>();
-    for (const ps of psList) {
+    for (const ps of genericPsList) {
       if (ps.domain && ps.domain.trim()) set.add(ps.domain.trim());
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [psList]);
+  }, [genericPsList]);
+
+  const trackPsCount = useMemo(() => {
+    return psList.filter((ps) => {
+      if (psTrackFilter === 'generic') return !ps.isSpecialTrack;
+      if (psTrackFilter === 'special') return ps.isSpecialTrack === true;
+      return false;
+    }).length;
+  }, [psList, psTrackFilter]);
 
   const filteredPsList = useMemo(() => {
     const q = psSearch.trim().toLowerCase();
-    const availabilityOf = (ps: ProblemStatement) => {
-      const filled = ps.assignedTeams.length;
-      if (filled <= 0) return 'free';
-      if (filled >= 3) return 'full';
-      return 'partial';
-    };
 
     return psList.filter((ps) => {
-      if (psTrackFilter !== 'all' && (ps.track ?? '').trim() !== psTrackFilter) return false;
-      if (psDifficultyFilter !== 'all' && (ps.difficulty ?? '').trim() !== psDifficultyFilter) return false;
-      if (psDomainFilter !== 'all' && (ps.domain ?? '').trim() !== psDomainFilter) return false;
-      if (psAvailabilityFilter !== 'all' && availabilityOf(ps) !== psAvailabilityFilter) return false;
+      // Track filtering: Generic shows all non-special PS, Special shows only special PS
+      if (psTrackFilter === 'generic' && ps.isSpecialTrack) return false;
+      if (psTrackFilter === 'special' && !ps.isSpecialTrack) return false;
 
+      // Difficulty and Domain filters (only for generic track)
+      if (psTrackFilter === 'generic') {
+        if (psDifficultyFilter !== 'all' && (ps.difficulty ?? '').trim() !== psDifficultyFilter) return false;
+        if (psDomainFilter !== 'all' && (ps.domain ?? '').trim() !== psDomainFilter) return false;
+      }
+
+      // Search filtering
       if (!q) return true;
       const hay = [ps.id, ps.title, ps.track ?? '', ps.difficulty ?? '', ps.domain ?? ''].join(' ').toLowerCase();
       return hay.includes(q);
     });
-  }, [psAvailabilityFilter, psDifficultyFilter, psDomainFilter, psList, psSearch, psTrackFilter]);
+  }, [psList, psSearch, psTrackFilter, psDifficultyFilter, psDomainFilter]);
 
   const openPsDetails = (ps: ProblemStatement) => {
     setSelectedPs(ps);
@@ -287,8 +302,9 @@ const ProblemStatementSelection = () => {
           : [];
 
         const isAlreadyIn = assignedTeams.includes(teamKey);
-        if (!isAlreadyIn && assignedTeams.length >= 3) {
-          throw new Error('This problem statement has reached its team limit (3).');
+        const maxTeams = typeof ps.maxTeams === 'number' ? ps.maxTeams : 3;
+        if (!isAlreadyIn && assignedTeams.length >= maxTeams) {
+          throw new Error(`This problem statement has reached its team limit (${maxTeams}).`);
         }
 
         const nextAssignedTeams = isAlreadyIn ? assignedTeams : [...assignedTeams, teamKey];
@@ -414,97 +430,105 @@ const ProblemStatementSelection = () => {
 
         <div className="border-t border-primary/20 pt-4">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="font-orbitron text-base text-foreground">Available problem statements</div>
+            <div className="font-orbitron text-base text-foreground">
+              {psTrackFilter === 'generic' ? 'Generic Problem Statements' : '⭐ Special Problem Statements'}
+            </div>
             {psLoading ? <div className="text-sm text-foreground/60">Loading…</div> : null}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5 mb-4">
+          <div className="space-y-4 mb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                variant={psTrackFilter === 'generic' ? 'default' : 'outline'}
+                onClick={() => setPsTrackFilter('generic')}
+                className="flex-1 sm:flex-none"
+              >
+                Generic Problem Statements
+              </Button>
+              <Button 
+                variant={psTrackFilter === 'special' ? 'default' : 'outline'}
+                onClick={() => setPsTrackFilter('special')}
+                className={`flex-1 sm:flex-none ${psTrackFilter === 'special' ? 'bg-yellow-600 hover:bg-yellow-700 text-white border-yellow-600' : 'hover:bg-yellow-600/10'}`}
+              >
+                ⭐ Special Problem Statements
+              </Button>
+            </div>
+
+            {psTrackFilter === 'generic' && (psDifficulties.length > 0 || psDomains.length > 0) && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {psDifficulties.length > 0 && (
+                  <Select value={psDifficultyFilter} onValueChange={setPsDifficultyFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Difficulty" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All difficulties</SelectItem>
+                      {psDifficulties.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {psDomains.length > 0 && (
+                  <Select value={psDomainFilter} onValueChange={setPsDomainFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Domain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All domains</SelectItem>
+                      {psDomains.map((d) => (
+                        <SelectItem key={d} value={d}>
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
             <Input
               value={psSearch}
               onChange={(e) => setPsSearch(e.target.value)}
-              placeholder="Search PS id/title/domain…"
-              className="lg:col-span-2"
+              placeholder="Search by PS id or title…"
+              className="w-full"
             />
 
-            <Select value={psTrackFilter} onValueChange={setPsTrackFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Track" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All tracks</SelectItem>
-                {psTracks.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={psDifficultyFilter} onValueChange={setPsDifficultyFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Difficulty" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All difficulties</SelectItem>
-                {psDifficulties.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={psAvailabilityFilter} onValueChange={setPsAvailabilityFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Availability" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="free">Free (0/3)</SelectItem>
-                <SelectItem value="partial">Available (1-2/3)</SelectItem>
-                <SelectItem value="full">Full (3/3)</SelectItem>
-              </SelectContent>
-            </Select>
+            {psTrackFilter === 'generic' && (psDifficultyFilter !== 'all' || psDomainFilter !== 'all') && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPsDifficultyFilter('all');
+                  setPsDomainFilter('all');
+                }}
+                className="w-full sm:w-auto"
+              >
+                Clear filters
+              </Button>
+            )}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 mb-4">
-            <Select value={psDomainFilter} onValueChange={setPsDomainFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Domain" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All domains</SelectItem>
-                {psDomains.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setPsSearch('');
-                setPsTrackFilter('all');
-                setPsDifficultyFilter('all');
-                setPsDomainFilter('all');
-                setPsAvailabilityFilter('all');
-              }}
-            >
-              Clear filters
-            </Button>
+          <div className="text-xs text-foreground/60 mb-3">
+            Showing {filteredPsList.length} of {trackPsCount} {psTrackFilter === 'generic' ? 'generic' : 'special'} problem statements
           </div>
 
-          <div className="text-xs text-foreground/60 mb-3">Showing {filteredPsList.length} of {psList.length}</div>
-
-          {psList.length === 0 && !psLoading ? (
-            <div className="text-sm text-foreground/70">No problem statements published yet.</div>
+          {trackPsCount === 0 && !psLoading ? (
+            <div className="text-sm text-foreground/70">
+              No {psTrackFilter === 'generic' ? 'generic' : 'special'} problem statements published yet.
+            </div>
+          ) : filteredPsList.length === 0 && !psLoading ? (
+            <div className="text-sm text-foreground/70">
+              No problem statements match your search.
+            </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {filteredPsList.map((ps) => {
                     const filled = ps.assignedTeams.length;
-                    const full = filled >= 3;
+                    const maxTeams = ps.maxTeams ?? 3;
+                    const full = filled >= maxTeams;
                     const takenByYou = !!effectiveTeamKey && ps.assignedTeams.includes(effectiveTeamKey);
                     const disabled = !authenticated || (!takenByYou && (!canClaim || full));
 
@@ -523,6 +547,7 @@ const ProblemStatementSelection = () => {
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {ps.track ? <Badge variant="secondary">{ps.track}</Badge> : null}
+                            {ps.isSpecialTrack ? <Badge className="bg-yellow-600 text-white">⭐ Special</Badge> : null}
                             {ps.difficulty ? <Badge className="bg-blue-600 text-white">{ps.difficulty}</Badge> : null}
                             {ps.domain ? <Badge className="bg-emerald-600 text-white">{ps.domain}</Badge> : null}
                             {typeof ps.order === 'number' ? <Badge variant="outline" className="border-primary/30">#{ps.order}</Badge> : null}
@@ -536,7 +561,7 @@ const ProblemStatementSelection = () => {
                           <Badge variant="secondary">Full</Badge>
                         ) : (
                           <Badge variant="outline" className="border-green-500/40 text-green-300">
-                            {filled}/3 filled
+                            {filled}/{maxTeams} filled
                           </Badge>
                         )}
                       </div>
@@ -548,7 +573,7 @@ const ProblemStatementSelection = () => {
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <div className="text-xs text-foreground/60">
-                        {full ? 'Team limit reached (3).' : `Slots left: ${Math.max(0, 3 - filled)}`}
+                        {full ? `Team limit reached (${maxTeams}).` : `Slots left: ${Math.max(0, maxTeams - filled)}`}
                       </div>
                       <div className="flex items-center gap-2">
                         <Button size="sm" variant="secondary" onClick={() => openPsDetails(ps)}>
@@ -589,6 +614,7 @@ const ProblemStatementSelection = () => {
             <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {selectedPs.track ? <Badge variant="secondary">{selectedPs.track}</Badge> : null}
+                {selectedPs.isSpecialTrack ? <Badge className="bg-yellow-600 text-white">⭐ Special</Badge> : null}
                 {selectedPs.difficulty ? <Badge className="bg-blue-600 text-white">{selectedPs.difficulty}</Badge> : null}
                 {selectedPs.domain ? <Badge className="bg-emerald-600 text-white">{selectedPs.domain}</Badge> : null}
                 {typeof selectedPs.order === 'number' ? (
@@ -597,7 +623,7 @@ const ProblemStatementSelection = () => {
                   </Badge>
                 ) : null}
                 <Badge variant="outline" className="border-primary/30 text-primary">
-                  Teams: {selectedPs.assignedTeams.length}/3
+                  Teams: {selectedPs.assignedTeams.length}/{selectedPs.maxTeams ?? 3}
                 </Badge>
               </div>
 
@@ -630,6 +656,19 @@ const ProblemStatementSelection = () => {
                 <div className="space-y-1">
                   <div className="font-orbitron text-sm text-foreground">Full Text</div>
                   <div className="text-sm text-foreground/80 whitespace-pre-wrap">{selectedPs.description}</div>
+                </div>
+              ) : null}
+
+              {selectedPs.pdfLink ? (
+                <div className="space-y-2">
+                  <div className="font-orbitron text-sm text-foreground">Full Problem Statement (PDF)</div>
+                  <Button
+                    onClick={() => window.open(selectedPs.pdfLink!, '_blank')}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    📄 Download/View Full PDF
+                  </Button>
+                  <div className="text-xs text-foreground/60">Opens Google Drive link in a new tab</div>
                 </div>
               ) : null}
             </div>

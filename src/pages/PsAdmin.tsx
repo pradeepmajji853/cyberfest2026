@@ -54,6 +54,9 @@ type PsRow = {
   expectedDeliverables?: string[] | null;
   assignedTeams?: string[];
   assignedCount?: number;
+  isSpecialTrack?: boolean;
+  pdfLink?: string | null;
+  maxTeams?: number;
 };
 
 const PsAdmin = () => {
@@ -64,10 +67,15 @@ const PsAdmin = () => {
   const [teamSaving, setTeamSaving] = useState(false);
 
   const [psTitle, setPsTitle] = useState('');
-  const [psTrack, setPsTrack] = useState('Hackathon');
+  const [psTrack, setPsTrack] = useState('Generic');
   const [psOrder, setPsOrder] = useState('');
   const [psDesc, setPsDesc] = useState('');
   const [psSaving, setPsSaving] = useState(false);
+
+  const [specialPsTitle, setSpecialPsTitle] = useState('');
+  const [specialPsDesc, setSpecialPsDesc] = useState('');
+  const [specialPsPdfLink, setSpecialPsPdfLink] = useState('');
+  const [specialPsSaving, setSpecialPsSaving] = useState(false);
 
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [problemStatements, setProblemStatements] = useState<PsRow[]>([]);
@@ -75,9 +83,6 @@ const PsAdmin = () => {
 
   const [psSearch, setPsSearch] = useState('');
   const [psTrackFilter, setPsTrackFilter] = useState<string>('all');
-  const [psDifficultyFilter, setPsDifficultyFilter] = useState<string>('all');
-  const [psDomainFilter, setPsDomainFilter] = useState<string>('all');
-  const [psAvailabilityFilter, setPsAvailabilityFilter] = useState<string>('all');
 
   const [psDialogOpen, setPsDialogOpen] = useState(false);
   const [selectedPs, setSelectedPs] = useState<PsRow | null>(null);
@@ -139,6 +144,9 @@ const PsAdmin = () => {
           expectedDeliverables,
           assignedTeams: Array.isArray(data.assignedTeams) ? data.assignedTeams.filter((x: any) => typeof x === 'string') : undefined,
           assignedCount: typeof data.assignedCount === 'number' ? data.assignedCount : undefined,
+          isSpecialTrack: typeof data.isSpecialTrack === 'boolean' ? data.isSpecialTrack : undefined,
+          pdfLink: typeof data.pdfLink === 'string' ? data.pdfLink : data.pdfLink === null ? null : undefined,
+          maxTeams: typeof data.maxTeams === 'number' ? data.maxTeams : undefined,
         };
       });
 
@@ -259,8 +267,9 @@ const PsAdmin = () => {
       await addDoc(collection(db, 'problemStatements'), {
         title,
         description: psDesc.trim() || null,
-        track: psTrack.trim() || 'Hackathon',
+        track: 'Generic',
         order: order ?? null,
+        maxTeams: 3,
         createdAt: serverTimestamp(),
       });
 
@@ -274,6 +283,49 @@ const PsAdmin = () => {
       alert('Failed to add PS.');
     } finally {
       setPsSaving(false);
+    }
+  };
+
+  const addSpecialProblemStatement = async () => {
+    const title = specialPsTitle.trim();
+    if (!title) {
+      alert('Enter special PS title');
+      return;
+    }
+
+    if (!specialPsDesc.trim()) {
+      alert('Enter overview/description');
+      return;
+    }
+
+    if (!specialPsPdfLink.trim()) {
+      alert('Enter Google Drive link for the PDF');
+      return;
+    }
+
+    setSpecialPsSaving(true);
+    try {
+      await addDoc(collection(db, 'problemStatements'), {
+        title,
+        description: specialPsDesc.trim(),
+        track: 'Devnovate Special Track',
+        isSpecialTrack: true,
+        pdfLink: specialPsPdfLink.trim(),
+        maxTeams: 25,
+        order: 9999,
+        createdAt: serverTimestamp(),
+      });
+
+      setSpecialPsTitle('');
+      setSpecialPsDesc('');
+      setSpecialPsPdfLink('');
+      await refresh();
+      alert('Added special track problem statement');
+    } catch (e) {
+      console.error('Add special PS error:', e);
+      alert('Failed to add special PS.');
+    } finally {
+      setSpecialPsSaving(false);
     }
   };
 
@@ -547,7 +599,7 @@ const PsAdmin = () => {
             docId,
             title: ps.title,
             description,
-            track: ps.domain ?? 'General',
+            track: 'Generic',
             order: typeof ps.order === 'number' ? ps.order : null,
             extra: {
               psNumber: ps.psNumber,
@@ -568,7 +620,7 @@ const PsAdmin = () => {
             docId: psId,
             title: ps.title,
             description: ps.description,
-            track: 'Hackathon',
+            track: 'Generic',
             order: inferredOrder,
           });
         }
@@ -684,61 +736,27 @@ const PsAdmin = () => {
     return map;
   }, [teams]);
 
-  const psTracks = useMemo(() => {
-    const set = new Set<string>();
-    for (const ps of problemStatements) {
-      if (ps.track && ps.track.trim()) set.add(ps.track.trim());
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [problemStatements]);
-
-  const psDifficulties = useMemo(() => {
-    const set = new Set<string>();
-    for (const ps of problemStatements) {
-      if (ps.difficulty && ps.difficulty.trim()) set.add(ps.difficulty.trim());
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [problemStatements]);
-
-  const psDomains = useMemo(() => {
-    const set = new Set<string>();
-    for (const ps of problemStatements) {
-      if (ps.domain && ps.domain.trim()) set.add(ps.domain.trim());
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [problemStatements]);
-
   const filteredProblemStatements = useMemo(() => {
     const q = psSearch.trim().toLowerCase();
 
-    const getFilled = (ps: PsRow) => ps.assignedCount ?? ps.assignedTeams?.length ?? 0;
-    const getAvailability = (ps: PsRow) => {
-      const filled = getFilled(ps);
-      if (filled <= 0) return 'free';
-      if (filled >= 3) return 'full';
-      return 'partial';
-    };
-
     return problemStatements.filter((ps) => {
-      if (psTrackFilter !== 'all' && (ps.track ?? '').trim() !== psTrackFilter) return false;
-      if (psDifficultyFilter !== 'all' && (ps.difficulty ?? '').trim() !== psDifficultyFilter) return false;
-      if (psDomainFilter !== 'all' && (ps.domain ?? '').trim() !== psDomainFilter) return false;
-      if (psAvailabilityFilter !== 'all' && getAvailability(ps) !== psAvailabilityFilter) return false;
+      // Track filtering: Generic shows all non-special PS, Devnovate Special Track shows only special PS
+      if (psTrackFilter === 'Generic' && ps.isSpecialTrack) return false;
+      if (psTrackFilter === 'Devnovate Special Track' && !ps.isSpecialTrack) return false;
 
+      // Search filtering
       if (!q) return true;
       const hay = [
         ps.id,
         ps.title ?? '',
         ps.psNumber ?? '',
         ps.track ?? '',
-        ps.domain ?? '',
-        ps.difficulty ?? '',
       ]
         .join(' ')
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [problemStatements, psAvailabilityFilter, psDifficultyFilter, psDomainFilter, psSearch, psTrackFilter]);
+  }, [problemStatements, psSearch, psTrackFilter]);
 
   const openPsDetails = (ps: PsRow) => {
     setSelectedPs(ps);
@@ -821,7 +839,14 @@ const PsAdmin = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-300" htmlFor="ps-admin-track">Track</Label>
-                <Input id="ps-admin-track" value={psTrack} onChange={(e) => setPsTrack(e.target.value)} className="bg-gray-900/50 border-gray-700 text-white" />
+                <Select value={psTrack} onValueChange={setPsTrack}>
+                  <SelectTrigger id="ps-admin-track" className="bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Generic">Generic</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-300" htmlFor="ps-admin-order">Order (optional)</Label>
@@ -833,6 +858,46 @@ const PsAdmin = () => {
               </div>
               <Button onClick={addProblemStatement} disabled={psSaving} className="w-full">
                 {psSaving ? 'Adding…' : 'Add Problem Statement'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800/50 border-purple-500/20">
+            <CardHeader>
+              <CardTitle className="text-white">Add Devnovate Special Track PS</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-yellow-400 font-semibold">
+                ⭐ Special Track: Limited to 25 teams
+              </div>
+              <div className="space-y-2">
+                <Label className="text-gray-300" htmlFor="special-ps-title">Title</Label>
+                <Input id="special-ps-title" value={specialPsTitle} onChange={(e) => setSpecialPsTitle(e.target.value)} className="bg-gray-900/50 border-gray-700 text-white" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-gray-300" htmlFor="special-ps-desc">Overview/Description</Label>
+                <textarea
+                  id="special-ps-desc"
+                  value={specialPsDesc}
+                  onChange={(e) => setSpecialPsDesc(e.target.value)}
+                  rows={4}
+                  className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-md px-3 py-2 text-sm"
+                  placeholder="Brief overview shown to participants..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-gray-300" htmlFor="special-ps-pdf">Google Drive PDF Link</Label>
+                <Input
+                  id="special-ps-pdf"
+                  value={specialPsPdfLink}
+                  onChange={(e) => setSpecialPsPdfLink(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/..."
+                  className="bg-gray-900/50 border-gray-700 text-white"
+                />
+                <div className="text-xs text-gray-400">Provide a shareable Google Drive link for the full problem statement PDF.</div>
+              </div>
+              <Button onClick={addSpecialProblemStatement} disabled={specialPsSaving} className="w-full bg-yellow-600 hover:bg-yellow-700">
+                {specialPsSaving ? 'Adding…' : 'Add Special Track PS'}
               </Button>
             </CardContent>
           </Card>
@@ -898,12 +963,12 @@ const PsAdmin = () => {
             <div>
               <div className="text-white font-semibold mb-2">Problem Statements</div>
 
-              <div className="grid gap-3 lg:grid-cols-5 md:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-3 md:grid-cols-2">
                 <Input
                   value={psSearch}
                   onChange={(e) => setPsSearch(e.target.value)}
-                  placeholder="Search by PS id/title/domain…"
-                  className="bg-gray-900/50 border-gray-700 text-white lg:col-span-2"
+                  placeholder="Search by PS id/title…"
+                  className="bg-gray-900/50 border-gray-700 text-white"
                 />
 
                 <Select value={psTrackFilter} onValueChange={setPsTrackFilter}>
@@ -912,53 +977,8 @@ const PsAdmin = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All tracks</SelectItem>
-                    {psTracks.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={psDifficultyFilter} onValueChange={setPsDifficultyFilter}>
-                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
-                    <SelectValue placeholder="Difficulty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All difficulties</SelectItem>
-                    {psDifficulties.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={psAvailabilityFilter} onValueChange={setPsAvailabilityFilter}>
-                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
-                    <SelectValue placeholder="Availability" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="free">Free (0/3)</SelectItem>
-                    <SelectItem value="partial">Available (1-2/3)</SelectItem>
-                    <SelectItem value="full">Full (3/3)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-3 mt-3 md:grid-cols-2">
-                <Select value={psDomainFilter} onValueChange={setPsDomainFilter}>
-                  <SelectTrigger className="bg-gray-900/50 border-gray-700 text-white">
-                    <SelectValue placeholder="Domain" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All domains</SelectItem>
-                    {psDomains.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="Generic">Generic</SelectItem>
+                    <SelectItem value="Devnovate Special Track">⭐ Devnovate Special Track</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -967,9 +987,6 @@ const PsAdmin = () => {
                   onClick={() => {
                     setPsSearch('');
                     setPsTrackFilter('all');
-                    setPsDifficultyFilter('all');
-                    setPsDomainFilter('all');
-                    setPsAvailabilityFilter('all');
                   }}
                 >
                   Clear filters
@@ -1008,10 +1025,12 @@ const PsAdmin = () => {
                       </div>
                       {(() => {
                         const filled = ps.assignedCount ?? ps.assignedTeams?.length ?? 0;
-                        if (filled >= 3) return <Badge className="bg-red-600">Full (3/3)</Badge>;
-                        if (filled > 0) return <Badge className="bg-purple-600">{filled}/3</Badge>;
+                        const maxTeams = ps.maxTeams ?? 3;
+                        if (filled >= maxTeams) return <Badge className="bg-red-600">Full ({filled}/{maxTeams})</Badge>;
+                        if (filled > 0) return <Badge className="bg-purple-600">{filled}/{maxTeams}</Badge>;
                         return <Badge className="bg-green-600">Free</Badge>;
                       })()}
+                      {ps.isSpecialTrack ? <Badge className="bg-yellow-600">⭐ Special</Badge> : null}
                     </div>
 
                     {ps.description ? (
@@ -1087,7 +1106,7 @@ const PsAdmin = () => {
 
               <div className="rounded-lg border border-gray-800 bg-gray-900/30 p-4">
                 <div className="text-sm text-gray-300">
-                  Teams selected: <span className="text-white font-semibold">{selectedPs.assignedCount ?? selectedPs.assignedTeams?.length ?? 0}/3</span>
+                  Teams selected: <span className="text-white font-semibold">{selectedPs.assignedCount ?? selectedPs.assignedTeams?.length ?? 0}/{selectedPs.maxTeams ?? 3}</span>
                 </div>
                 {selectedPs.assignedTeams?.length ? (
                   <div className="mt-2 grid gap-1">
@@ -1131,6 +1150,19 @@ const PsAdmin = () => {
                 <div className="space-y-1">
                   <div className="text-white font-semibold">Full Text</div>
                   <div className="text-sm text-gray-200 whitespace-pre-wrap">{selectedPs.description}</div>
+                </div>
+              ) : null}
+
+              {selectedPs.pdfLink ? (
+                <div className="space-y-1">
+                  <div className="text-white font-semibold">Full Problem Statement (PDF)</div>
+                  <Button
+                    onClick={() => window.open(selectedPs.pdfLink!, '_blank')}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    📄 Download/View PDF
+                  </Button>
+                  <div className="text-xs text-gray-400 break-all">{selectedPs.pdfLink}</div>
                 </div>
               ) : null}
             </div>

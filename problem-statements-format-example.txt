@@ -188,6 +188,22 @@ BEST PRACTICES:
 10. Keep formatting consistent throughout the document
 
 
+SPECIAL TRACK (DEVNOVATE):
+==========================
+
+For the Devnovate Special Track, use the admin interface to add:
+- Title: Name of the special problem statement
+- Overview/Description: Brief description shown to participants
+- Google Drive PDF Link: Full problem statement PDF hosted on Google Drive
+
+Special Track Features:
+- Automatically assigned to "Devnovate Special Track"
+- Maximum 25 teams can select this problem statement (vs. 3 for regular PS)
+- PDF link provides download access to full problem statement
+- Displays with a special ⭐ badge
+- Should only be used for one problem statement per event
+
+
 NOTES:
 ======
 
