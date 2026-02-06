@@ -27,6 +27,8 @@ interface TeamMember {
   rollNumber: string;
   email: string;
   phoneNumber: string;
+  tshirtSize?: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
+  isEmergencyContact?: boolean;
 }
 
 interface Movement {
@@ -67,6 +69,11 @@ interface Registration {
   foodTracking?: FoodTracking;
   movements?: Movement[];
   remarks?: string;
+  // Kit Distribution
+  welcomeKitReceived?: boolean;
+  tshirtsDistributed?: boolean;
+  idCardDistributed?: boolean;
+  kitDistributedAt?: string;
 }
 
 const Admin = () => {
@@ -95,6 +102,8 @@ const Admin = () => {
   const [venue3Count, setVenue3Count] = useState(0);
   const [labAssignmentMode, setLabAssignmentMode] = useState(false);
   const [labCounts, setLabCounts] = useState<{ [key: string]: number }>({});
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(true);
+  const [lastBackupTime, setLastBackupTime] = useState<string | null>(null);
 
   const COOLDOWN_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -300,6 +309,216 @@ const Admin = () => {
     a.click();
     window.URL.revokeObjectURL(url);
   };
+
+  // NEW EXPORT FUNCTIONS
+  
+  const exportCheckedInTeams = () => {
+    const checkedIn = registrations.filter(r => r.checkedIn);
+    const data = checkedIn.map(reg => ({
+      'Team Name': reg.teamName,
+      'Event Type': reg.eventType.toUpperCase(),
+      'Team Size': reg.teamMembers.length,
+      'Checked In At': reg.checkedInAt ? new Date(reg.checkedInAt).toLocaleString() : '',
+      'Team Leader': reg.teamMembers[0]?.name || '',
+      'Phone': reg.teamMembers[0]?.phoneNumber || '',
+      'Email': reg.teamMembers[0]?.email || ''
+    }));
+    
+    downloadCSV(data, `CheckedIn_Teams_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportLabWiseTeams = () => {
+    const assigned = registrations.filter(r => r.finalLab);
+    const data = assigned.map(reg => ({
+      'Lab': reg.finalLab,
+      'Team Name': reg.teamName,
+      'Event Type': reg.eventType.toUpperCase(),
+      'Team Size': reg.teamMembers.length,
+      'Lab Attendance': reg.labAttendance ? 'Present' : 'Absent',
+      'Team Leader': reg.teamMembers[0]?.name || '',
+      'Phone': reg.teamMembers[0]?.phoneNumber || ''
+    }));
+    
+    downloadCSV(data, `Lab_Wise_Teams_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportFoodCounts = () => {
+    const data: Array<Record<string, string | number>> = [];
+    
+    registrations.filter(r => r.isValid !== false).forEach(reg => {
+      const tracking = reg.foodTracking || {
+        lunch6th: false,
+        dinner6th: false,
+        breakfast7th: false,
+        lunch7th: false
+      };
+      data.push({
+        'Team Name': reg.teamName,
+        'Team Size': reg.teamMembers.length,
+        'Lunch 6th': tracking.lunch6th ? 'Yes' : 'No',
+        'Dinner 6th': tracking.dinner6th ? 'Yes' : 'No',
+        'Breakfast 7th': tracking.breakfast7th ? 'Yes' : 'No',
+        'Lunch 7th': tracking.lunch7th ? 'Yes' : 'No',
+        'Total Meals': [tracking.lunch6th, tracking.dinner6th, tracking.breakfast7th, tracking.lunch7th].filter(Boolean).length
+      });
+    });
+    
+    downloadCSV(data, `Food_Tracking_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportEmergencyContacts = () => {
+    const data: Array<Record<string, string>> = [];
+    
+    registrations.filter(r => r.isValid !== false).forEach(reg => {
+      const emergencyMember = reg.teamMembers.find(m => m.isEmergencyContact) || reg.teamMembers[0];
+      data.push({
+        'Team Name': reg.teamName,
+        'Event Type': reg.eventType.toUpperCase(),
+        'Emergency Contact Name': emergencyMember.name,
+        'Phone': emergencyMember.phoneNumber,
+        'Email': emergencyMember.email,
+        'College': emergencyMember.college || emergencyMember.customCollege
+      });
+    });
+    
+    downloadCSV(data, `Emergency_Contacts_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportVenueAttendance = () => {
+    const data: Array<Record<string, string | number>> = [];
+    
+    ['venue1', 'venue2', 'venue3'].forEach(venue => {
+      const venueTeams = registrations.filter(r => r.initialVenue === venue);
+      venueTeams.forEach(reg => {
+        data.push({
+          'Venue': venue.toUpperCase(),
+          'Team Name': reg.teamName,
+          'Team Size': reg.teamMembers.length,
+          'Attendance': reg.initialVenueAttendance ? 'Present' : 'Absent',
+          'Team Leader': reg.teamMembers[0]?.name || '',
+          'Phone': reg.teamMembers[0]?.phoneNumber || ''
+        });
+      });
+    });
+    
+    downloadCSV(data, `Venue_Attendance_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const exportKitDistribution = () => {
+    const data = registrations.filter(r => r.isValid !== false).flatMap(reg => 
+      reg.teamMembers.map((member, idx) => ({
+        'Team Name': reg.teamName,
+        'Member Name': member.name,
+        'T-Shirt Size': member.tshirtSize || 'Not Set',
+        'Welcome Kit': reg.welcomeKitReceived ? 'Received' : 'Pending',
+        'T-Shirt': reg.tshirtsDistributed ? 'Received' : 'Pending',
+        'ID Card': reg.idCardDistributed ? 'Received' : 'Pending',
+        'Distributed At': reg.kitDistributedAt ? new Date(reg.kitDistributedAt).toLocaleString() : ''
+      }))
+    );
+    
+    downloadCSV(data, `Kit_Distribution_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const downloadCSV = (data: Array<Record<string, string | number | boolean>>, filename: string) => {
+    if (data.length === 0) {
+      alert('No data to export');
+      return;
+    }
+    
+    const headers = Object.keys(data[0]).join(',');
+    const rows = data.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csv = [headers, ...rows].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  // FIREBASE BACKUP FUNCTIONS
+  
+  const exportFullBackup = () => {
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      totalRegistrations: registrations.length,
+      data: registrations
+    };
+    
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `CyberFest_Backup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    setLastBackupTime(new Date().toISOString());
+    localStorage.setItem('lastBackupTime', new Date().toISOString());
+    alert(`Backup complete! ${registrations.length} registrations exported.`);
+  };
+
+  const importFromBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      
+      if (!backup.data || !Array.isArray(backup.data)) {
+        alert('Invalid backup file format');
+        return;
+      }
+
+      const confirm = window.confirm(
+        `This will restore ${backup.data.length} registrations from ${new Date(backup.exportedAt).toLocaleString()}. ` +
+        `This operation cannot be undone. Continue?`
+      );
+      
+      if (!confirm) return;
+
+      // Import data back to state (not Firebase to avoid hitting limits)
+      setRegistrations(backup.data);
+      alert(`Restored ${backup.data.length} registrations from backup. Note: This is loaded locally, not synced to Firebase.`);
+    } catch (error) {
+      console.error('Error importing backup:', error);
+      alert('Failed to import backup file');
+    }
+  };
+
+  // Auto-backup every 30 minutes if enabled
+  useEffect(() => {
+    if (!autoBackupEnabled || registrations.length === 0) return;
+    
+    const doBackup = () => {
+      const backup = {
+        exportedAt: new Date().toISOString(),
+        totalRegistrations: registrations.length,
+        data: registrations
+      };
+      
+      const json = JSON.stringify(backup, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CyberFest_AutoBackup_${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      setLastBackupTime(new Date().toISOString());
+      localStorage.setItem('lastBackupTime', new Date().toISOString());
+    };
+    
+    const interval = setInterval(doBackup, 30 * 60 * 1000); // 30 minutes
+    
+    return () => clearInterval(interval);
+  }, [autoBackupEnabled, registrations]);
 
   const bulkConfirmNonRejected = async () => {
     const nonRejected = filteredRegistrations.filter(reg => reg.isValid !== false && !reg.confirmationSent);
@@ -1084,6 +1303,46 @@ const Admin = () => {
   };
 
   // Lab Assignment Functions
+  const assignLabsAutomatically = async () => {
+    const hackathonTeams = registrations.filter(r => r.eventType === 'hackathon' && r.isValid !== false && !r.finalLab);
+    const ctfTeams = registrations.filter(r => r.eventType === 'ctf' && r.isValid !== false && !r.finalLab);
+
+    const totalLabCount = Object.values(labCounts).reduce((sum, count) => sum + count, 0);
+    if (totalLabCount !== hackathonTeams.length) {
+      alert(`Hackathon lab counts must equal ${hackathonTeams.length}. Current: ${totalLabCount}`);
+      return;
+    }
+
+    try {
+      // Assign CTF teams to CTF lab
+      for (const team of ctfTeams) {
+        const regDoc = doc(db, 'registrations', team.id);
+        await updateDoc(regDoc, { finalLab: 'ctf-lab' });
+      }
+
+      // Assign Hackathon teams based on counts
+      const labs = ['hack-lab1', 'hack-lab2', 'hack-lab3', 'hack-lab4', 'hack-lab5', 'hack-lab6', 'hack-lab7', 'hack-lab8', 'hack-lab9'];
+      let teamIndex = 0;
+
+      for (const lab of labs) {
+        const count = labCounts[lab] || 0;
+        for (let i = 0; i < count && teamIndex < hackathonTeams.length; i++) {
+          const team = hackathonTeams[teamIndex];
+          const regDoc = doc(db, 'registrations', team.id);
+          await updateDoc(regDoc, { finalLab: lab });
+          teamIndex++;
+        }
+      }
+
+      await fetchRegistrations();
+      setLabAssignmentMode(false);
+      alert('Lab assignment complete!');
+    } catch (error) {
+      console.error('Error assigning labs:', error);
+      alert('Failed to assign labs');
+    }
+  };
+
   const assignToLab = async (regId: string, lab: string) => {
     try {
       const regDoc = doc(db, 'registrations', regId);
@@ -1137,6 +1396,75 @@ const Admin = () => {
     } catch (error) {
       console.error('Error toggling food:', error);
       alert('Failed to update food tracking');
+    }
+  };
+
+  // Kit Distribution Functions
+  const toggleKit = async (regId: string, kitType: 'welcomeKitReceived' | 'tshirtsDistributed' | 'idCardDistributed') => {
+    try {
+      const reg = registrations.find(r => r.id === regId);
+      if (!reg) return;
+
+      const newValue = !reg[kitType];
+      const updates: Partial<Registration> = { [kitType]: newValue };
+      
+      if (newValue && !reg.kitDistributedAt) {
+        updates.kitDistributedAt = new Date().toISOString();
+      }
+
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, updates);
+      
+      setRegistrations(prev => prev.map(r => 
+        r.id === regId ? { ...r, ...updates } : r
+      ));
+    } catch (error) {
+      console.error('Error toggling kit:', error);
+      alert('Failed to update kit distribution');
+    }
+  };
+
+  const updateTshirtSize = async (regId: string, memberIndex: number, size: string) => {
+    try {
+      const reg = registrations.find(r => r.id === regId);
+      if (!reg) return;
+
+      const updatedMembers = [...reg.teamMembers];
+      updatedMembers[memberIndex] = { 
+        ...updatedMembers[memberIndex], 
+        tshirtSize: size as TeamMember['tshirtSize']
+      };
+
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { teamMembers: updatedMembers });
+      
+      setRegistrations(prev => prev.map(r => 
+        r.id === regId ? { ...r, teamMembers: updatedMembers } : r
+      ));
+    } catch (error) {
+      console.error('Error updating t-shirt size:', error);
+    }
+  };
+
+  const setEmergencyContact = async (regId: string, memberIndex: number) => {
+    try {
+      const reg = registrations.find(r => r.id === regId);
+      if (!reg) return;
+
+      const updatedMembers = reg.teamMembers.map((m, idx) => ({
+        ...m,
+        isEmergencyContact: idx === memberIndex
+      }));
+
+      const regDoc = doc(db, 'registrations', regId);
+      await updateDoc(regDoc, { teamMembers: updatedMembers });
+      
+      setRegistrations(prev => prev.map(r => 
+        r.id === regId ? { ...r, teamMembers: updatedMembers } : r
+      ));
+    } catch (error) {
+      console.error('Error setting emergency contact:', error);
+      alert('Failed to set emergency contact');
     }
   };
 
@@ -1502,7 +1830,79 @@ const Admin = () => {
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Bulk Confirm
                 </Button>
+
+                {/* Additional Export Dropdowns */}
+                <Select onValueChange={(value) => {
+                  if (value === 'checked-in') exportCheckedInTeams();
+                  else if (value === 'lab-wise') exportLabWiseTeams();
+                  else if (value === 'food') exportFoodCounts();
+                  else if (value === 'emergency') exportEmergencyContacts();
+                  else if (value === 'venue') exportVenueAttendance();
+                  else if (value === 'kit') exportKitDistribution();
+                }}>
+                  <SelectTrigger className="w-full sm:w-[220px] bg-gray-900/50 border-gray-700 text-white">
+                    <SelectValue placeholder="Export Reports" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="checked-in">Checked-In Teams</SelectItem>
+                    <SelectItem value="lab-wise">Lab-Wise Teams</SelectItem>
+                    <SelectItem value="venue">Venue Attendance</SelectItem>
+                    <SelectItem value="food">Food Tracking</SelectItem>
+                    <SelectItem value="kit">Kit Distribution</SelectItem>
+                    <SelectItem value="emergency">Emergency Contacts</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Firebase Backup */}
+                <Button
+                  onClick={exportFullBackup}
+                  variant="outline"
+                  className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                  title="Export full backup JSON"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Backup DB
+                </Button>
+
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={importFromBackup}
+                    className="hidden"
+                    id="backup-import"
+                  />
+                  <Button
+                    onClick={() => document.getElementById('backup-import')?.click()}
+                    variant="outline"
+                    className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10"
+                    title="Restore from backup"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Restore DB
+                  </Button>
+                </div>
               </div>
+
+              {/* Firebase Usage Warning */}
+              {registrations.length > 100 && (
+                <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-500/50 rounded">
+                  <p className="text-sm text-yellow-400">
+                    ⚠️ Large dataset detected ({registrations.length} teams). 
+                    {lastBackupTime && ` Last backup: ${new Date(lastBackupTime).toLocaleTimeString()}.`}
+                    {' '}Consider using local backups to avoid Firebase limits.
+                  </p>
+                  <label className="flex items-center gap-2 mt-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={autoBackupEnabled}
+                      onChange={(e) => setAutoBackupEnabled(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-gray-300">Auto-backup every 30 minutes</span>
+                  </label>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -2525,20 +2925,71 @@ const Admin = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* Lab Selection Grid */}
-                  <div className="grid gap-3">
+                  {/* Auto Assignment for Hackathon */}
+                  {!labAssignmentMode ? (
+                    <div className="mb-6">
+                      <p className="text-gray-400 mb-4">
+                        Assigned: {registrations.filter(r => r.finalLab).length} / {registrations.filter(r => r.isValid !== false).length}
+                      </p>
+                      <Button
+                        onClick={() => setLabAssignmentMode(true)}
+                        className="bg-purple-600 hover:bg-purple-700"
+                        disabled={registrations.filter(r => r.eventType === 'hackathon' && r.isValid !== false && !r.finalLab).length === 0}
+                      >
+                        Auto-Assign Hackathon Labs
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="mb-6 space-y-4">
+                      <p className="text-sm text-gray-400">
+                        Hackathon teams to assign: {registrations.filter(r => r.eventType === 'hackathon' && r.isValid !== false && !r.finalLab).length}
+                      </p>
+                      <div className="grid md:grid-cols-3 gap-3">
+                        {['hack-lab1', 'hack-lab2', 'hack-lab3', 'hack-lab4', 'hack-lab5', 'hack-lab6', 'hack-lab7', 'hack-lab8', 'hack-lab9'].map(lab => (
+                          <div key={lab}>
+                            <label className="block text-xs mb-1">{lab}</label>
+                            <Input
+                              type="number"
+                              value={labCounts[lab] || 0}
+                              onChange={(e) => setLabCounts({ ...labCounts, [lab]: parseInt(e.target.value) || 0 })}
+                              className="bg-gray-900/50 border-gray-700 h-9"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-sm">
+                        Total: {Object.values(labCounts).reduce((sum, count) => sum + count, 0)} / {registrations.filter(r => r.eventType === 'hackathon' && r.isValid !== false && !r.finalLab).length}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button onClick={assignLabsAutomatically} className="bg-green-600 hover:bg-green-700">
+                          Assign Labs
+                        </Button>
+                        <Button onClick={() => setLabAssignmentMode(false)} variant="outline">
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Lab Selection Grid */}
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
                     {registrations.filter(r => r.isValid !== false).map(reg => (
                       <div key={reg.id} className="bg-gray-900/50 p-3 rounded flex items-center gap-3">
                         <div className="flex-1">
                           <span className="font-medium">{reg.teamName}</span>
                           <span className="text-gray-400 ml-2">({reg.eventType.toUpperCase()})</span>
+                          {reg.finalLab && (
+                            <Badge className="ml-2 bg-purple-500/20 text-purple-300">
+                              {reg.finalLab}
+                            </Badge>
+                          )}
                         </div>
                         <Select
                           value={reg.finalLab || ''}
                           onValueChange={(value) => assignToLab(reg.id, value)}
                         >
                           <SelectTrigger className="w-48 bg-gray-800 border-gray-700">
-                            <SelectValue placeholder="Assign lab..." />
+                            <SelectValue placeholder="Change lab..." />
                           </SelectTrigger>
                           <SelectContent>
                             {reg.eventType === 'ctf' ? (
@@ -2569,14 +3020,16 @@ const Admin = () => {
                     ))}
                   </div>
 
-                  {/* Lab Counts */}
+                  {/* Lab Counts Summary */}
                   <div className="grid md:grid-cols-5 gap-2 mt-6">
                     {['ctf-lab', 'hack-lab1', 'hack-lab2', 'hack-lab3', 'hack-lab4', 'hack-lab5', 'hack-lab6', 'hack-lab7', 'hack-lab8', 'hack-lab9'].map(lab => {
                       const labTeams = registrations.filter(r => r.finalLab === lab);
+                      const attendance = labTeams.filter(r => r.labAttendance).length;
                       return (
                         <div key={lab} className="bg-gray-900/50 p-2 rounded text-center">
                           <div className="text-xs text-gray-400">{lab}</div>
                           <div className="text-lg font-bold">{labTeams.length}</div>
+                          <div className="text-xs text-green-400">✓ {attendance}</div>
                         </div>
                       );
                     })}
@@ -2636,6 +3089,109 @@ const Admin = () => {
                             >
                               {meal.label}
                             </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Kit Distribution Section */}
+            <Card className="bg-gray-800/50 border-purple-500/20">
+              <CardHeader>
+                <CardTitle className="text-xl">Kit Distribution Tracking</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Kit Stats */}
+                  <div className="grid md:grid-cols-3 gap-3 mb-6">
+                    <div className="bg-gray-900/50 p-3 rounded text-center">
+                      <div className="text-sm text-gray-400">Welcome Kits</div>
+                      <div className="text-2xl font-bold text-green-400">
+                        {registrations.filter(r => r.welcomeKitReceived).length} / {registrations.filter(r => r.isValid !== false).length}
+                      </div>
+                    </div>
+                    <div className="bg-gray-900/50 p-3 rounded text-center">
+                      <div className="text-sm text-gray-400">T-Shirts</div>
+                      <div className="text-2xl font-bold text-blue-400">
+                        {registrations.filter(r => r.tshirtsDistributed).length} / {registrations.filter(r => r.isValid !== false).length}
+                      </div>
+                    </div>
+                    <div className="bg-gray-900/50 p-3 rounded text-center">
+                      <div className="text-sm text-gray-400">ID Cards</div>
+                      <div className="text-2xl font-bold text-purple-400">
+                        {registrations.filter(r => r.idCardDistributed).length} / {registrations.filter(r => r.isValid !== false).length}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Kit Distribution Grid */}
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {registrations.filter(r => r.isValid !== false).map(reg => (
+                      <div key={reg.id} className="bg-gray-900/50 p-4 rounded">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex-1">
+                            <span className="font-medium text-lg">{reg.teamName}</span>
+                            <span className="text-gray-400 ml-2">({reg.teamMembers.length} members)</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => toggleKit(reg.id, 'welcomeKitReceived')}
+                              className={`px-3 py-1 rounded text-sm ${
+                                reg.welcomeKitReceived ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300'
+                              }`}
+                            >
+                              Welcome Kit
+                            </button>
+                            <button
+                              onClick={() => toggleKit(reg.id, 'tshirtsDistributed')}
+                              className={`px-3 py-1 rounded text-sm ${
+                                reg.tshirtsDistributed ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300'
+                              }`}
+                            >
+                              T-Shirts
+                            </button>
+                            <button
+                              onClick={() => toggleKit(reg.id, 'idCardDistributed')}
+                              className={`px-3 py-1 rounded text-sm ${
+                                reg.idCardDistributed ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'
+                              }`}
+                            >
+                              ID Card
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* T-Shirt Sizes for each member */}
+                        <div className="space-y-2">
+                          {reg.teamMembers.map((member, idx) => (
+                            <div key={idx} className="flex items-center gap-3 text-sm bg-gray-800/50 p-2 rounded">
+                              <span className="flex-1">{member.name}</span>
+                              <Select
+                                value={member.tshirtSize || ''}
+                                onValueChange={(value) => updateTshirtSize(reg.id, idx, value)}
+                              >
+                                <SelectTrigger className="w-24 h-8 bg-gray-700 border-gray-600 text-xs">
+                                  <SelectValue placeholder="Size" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(size => (
+                                    <SelectItem key={size} value={size}>{size}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <button
+                                onClick={() => setEmergencyContact(reg.id, idx)}
+                                className={`px-2 py-1 rounded text-xs ${
+                                  member.isEmergencyContact ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-400'
+                                }`}
+                                title="Emergency Contact"
+                              >
+                                {member.isEmergencyContact ? '🚨 Emergency' : 'Set Emergency'}
+                              </button>
+                            </div>
                           ))}
                         </div>
                       </div>
