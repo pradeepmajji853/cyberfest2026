@@ -1,6 +1,6 @@
 # CyberFest 2026 - Official Website
 
-a readme change
+a readme changed now
 
 A National-Level Cybersecurity Conclave website for CyberFest 2026, hosted at CBIT, Hyderabad, and organized by Digital Defence Club (DDC).
 
