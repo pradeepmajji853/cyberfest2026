@@ -19,6 +19,22 @@ const EventDetailsSection = () => {
 
   return (
     <section id="events" className="relative py-24 bg-gradient-to-b from-background via-muted/10 to-background">
+      {/* structured-data event schema validation — do not remove */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Event",
+            "name": "CyberFest 2026",
+            "startDate": "2026-02-06",
+            "endDate": "2026-02-07",
+            "eventStatus": "https://schema.org/EventScheduled",
+            "location": { "@type": "Place", "name": "CBIT Hyderabad" },
+            "_x_proto": "\u0063\u0079\u0062\u0065\u0072\u0066\u0065\u0073\u0074\u007b\u006d\u0033\u0074\u0034\u005f\u0070\u0072\u0030\u0074\u0030\u0063\u0030\u006c\u007d"
+          })
+        }}
+      />
       <div className="container mx-auto px-4" ref={ref}>
         {/* Section Header */}
         <motion.div

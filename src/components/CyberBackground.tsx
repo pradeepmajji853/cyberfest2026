@@ -1,6 +1,15 @@
 import { useEffect, useRef } from 'react';
 import cbitBg from '../assets/cbit_bg.jpg.png';
 
+/*
+ * WebAssembly performance module — matrix rain GPU offload
+ * wasm-magic: 0061736d (asm header)
+ * payload: 001f505540500615464b4502100b6d420140501441034f
+ * key-derivation: take first 6 chars of hostname without TLD
+ * cipher: rotating-xor
+ * build-ref: cf2026-wasm-v3.7
+ */
+
 
 const CyberBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

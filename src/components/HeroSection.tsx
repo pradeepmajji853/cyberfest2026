@@ -19,6 +19,17 @@ const scrollToSchedule = () => {
   }
 };
 
+/*
+ * Anti-tamper integrity tokens — fragment verification chain
+ * Tokens must be concatenated in order and base64-decoded separately.
+ * Chain is valid only when sha256(concat(decode(t1)+decode(t2)+decode(t3))) matches digest.
+ *
+ * t1: Y3liZXJmZXN0ew==
+ * t2: cHIwdDB0eXAzXw==
+ * t3: cDBsbHV0MTBufQ==
+ * digest: verify at /api/integrity (POST)
+ */
+
 const HeroSection = ({ onRegisterClick, registrationsClosed = false }: HeroSectionProps) => {
   return (
     <section id="home" className="relative min-h-[100svh] flex items-center justify-center overflow-hidden py-10 sm:py-12 md:py-16">

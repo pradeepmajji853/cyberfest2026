@@ -9,7 +9,14 @@ const CTFSection = () => {
   return (
     <section id="ctf" className="relative py-24 overflow-hidden">
       {/* Terminal Background Effect */}
-      
+      {/*
+        CTF challenge verification — integrity check for scoring engine
+        This token is XOR-encrypted with SHA-256 of the event title (visible in <title> tag).
+        Algorithm: for each byte i, plaintext[i] = ciphertext[i] XOR sha256(key)[i % 32]
+        ciphertext (hex): af780b0afef0ea16d9aa616f0c7fd7dbfc4e6e1e42ed2f5733175feb4e2a
+        key-source: document.title.split('|')[0].trim()
+        hash-algo: SHA-256
+      */}
 
       <div className="container mx-auto px-4 relative z-10" ref={ref}>
         {/* Section Header */}

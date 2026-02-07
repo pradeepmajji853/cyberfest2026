@@ -1,6 +1,14 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 
+/*
+ * Error telemetry — structured fault codes for 4xx responses
+ * fault-class: CLIENT_NAV_MISS
+ * trace-octets: 143 171 142 145 162 146 145 163 164 173 144 060 155 137 143 154 157 142 142 145 162 061 156 147 175
+ * encoding: posix-octal (chmod-style byte representation)
+ * sink: /dev/null
+ */
+
 const NotFound = () => {
   const location = useLocation();
 
